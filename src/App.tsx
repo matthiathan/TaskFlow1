@@ -23,8 +23,8 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       
-      {/* Protected Routes */}
-      <Route element={<ProtectedRoute />}>
+      {/* Universal Protected Routes (All Roles) */}
+      <Route element={<ProtectedRoute roles={['admin', 'road_tech', 'user']} />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/tasks" element={<TasksPage />} />

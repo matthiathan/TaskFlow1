@@ -25,20 +25,26 @@ export const useTasksData = () => {
   }, []);
 
   useEffect(() => {
+    // 1. Initial data fetch
     fetchTasks();
 
-    // Initialize Real-Time Protocol
+    // 2. Establish Real-Time Subscription
     const tasksSubscription = supabase
-      .channel('tasks-ops-channel')
+      .channel('tasks-live-updates')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setTasks((prev) => {
-              // Prevent duplicate if optimistic update already injected it locally
+              // Prevent duplicates from our own optimistic updates
               if (prev.some((t) => t.id === payload.new.id)) return prev;
-              return [payload.new as Task, ...prev];
+              
+              // Add new task and re-sort by due_date
+              const newTasks = [...prev, payload.new as Task];
+              return newTasks.sort((a, b) => 
+                new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+              );
             });
           }
           if (payload.eventType === 'UPDATE') {
@@ -53,14 +59,13 @@ export const useTasksData = () => {
       )
       .subscribe();
 
-    // Cleanup subscription on unmount
+    // 3. Cleanup connection when the user leaves the page
     return () => {
       supabase.removeChannel(tasksSubscription);
     };
   }, [fetchTasks]);
 
   const addTask = async (task: Omit<Task, 'id'>) => {
-    // Optimistic update
     const tempId = crypto.randomUUID();
     const newTask = { ...task, id: tempId } as Task;
     setTasks(prev => [newTask, ...prev]);
@@ -73,12 +78,9 @@ export const useTasksData = () => {
         .single();
 
       if (error) throw error;
-      
-      // Replace temp task with real data
       setTasks(prev => prev.map(t => t.id === tempId ? data : t));
       return data;
     } catch (err: any) {
-      // Rollback
       setTasks(prev => prev.filter(t => t.id !== tempId));
       throw err;
     }
@@ -86,8 +88,6 @@ export const useTasksData = () => {
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     const originalTasks = [...tasks];
-    
-    // Optimistic update
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
 
     try {
@@ -98,7 +98,6 @@ export const useTasksData = () => {
 
       if (error) throw error;
     } catch (err: any) {
-      // Rollback
       setTasks(originalTasks);
       throw err;
     }
@@ -106,8 +105,6 @@ export const useTasksData = () => {
 
   const deleteTask = async (id: string) => {
     const originalTasks = [...tasks];
-    
-    // Optimistic update
     setTasks(prev => prev.filter(t => t.id !== id));
 
     try {
@@ -118,7 +115,6 @@ export const useTasksData = () => {
 
       if (error) throw error;
     } catch (err: any) {
-      // Rollback
       setTasks(originalTasks);
       throw err;
     }

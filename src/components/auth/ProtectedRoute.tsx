@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ roles }) => {
-  const { session, profile, loading } = useAuth();
+  const { session, role, loading } = useAuth();
 
   if (loading) return <LoadingScreen />;
 
@@ -17,7 +17,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ roles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles && profile && !roles.includes(profile.role)) {
+  if (roles && role && !roles.includes(role)) {
     return <Navigate to="/dashboard" replace />;
   }
 

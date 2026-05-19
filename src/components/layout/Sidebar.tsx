@@ -19,7 +19,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 
 export const Sidebar: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -40,7 +40,7 @@ export const Sidebar: React.FC = () => {
   ];
 
   const filteredItems = navItems.filter(item => 
-    profile?.role && item.roles.includes(profile.role)
+    role && item.roles.includes(role)
   );
 
   return (

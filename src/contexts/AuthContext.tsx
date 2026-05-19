@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     profile,
     loading,
-    role: profile?.role ?? null,
+    role: profile?.role || 'user', 
     isAdmin: profile?.role === 'admin',
     isRoadTech: profile?.role === 'road_tech',
   };

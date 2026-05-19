@@ -1,0 +1,8 @@
+{
+  "name": "Dallmayr Ops Portal",
+  "description": "Enterprise-grade Operations Portal for Dallmayr South Africa, featuring advanced task management, asset verifications, and ERP request tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

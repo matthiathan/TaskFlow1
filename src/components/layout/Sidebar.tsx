@@ -29,6 +29,7 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'road_tech', 'user'] },
     { to: '/tasks', label: 'Operations Ops', icon: ClipboardList, roles: ['admin', 'road_tech', 'user'] },
+    { to: '/special-tasks', label: 'Special Ops', icon: ClipboardList, roles: ['admin', 'road_tech', 'user'] },
     { to: '/calendar', label: 'Live Schedule', icon: Calendar, roles: ['admin', 'road_tech', 'user'] },
     { to: '/erp-requests', label: 'ERP Technical', icon: Settings, roles: ['admin', 'road_tech'] },
     { to: '/verifications', label: 'Asset Audits', icon: ShieldCheck, roles: ['admin', 'road_tech'] },

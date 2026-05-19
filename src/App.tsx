@@ -9,6 +9,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { ERPRequestsPage } from './pages/ERPRequestsPage';
 import { VerificationsPage } from './pages/VerificationsPage';
 import { MessagesPage } from './pages/MessagesPage';
+import { SpecialTasksPage } from './pages/SpecialTasksPage';
 import { LoadingScreen } from './components/ui/LoadingScreen';
 import { useAuth } from './contexts/AuthContext';
 
@@ -26,6 +27,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/special-tasks" element={<SpecialTasksPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/messages" element={<MessagesPage />} />
       </Route>

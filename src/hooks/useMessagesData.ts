@@ -35,32 +35,55 @@ export const useMessagesData = (recipientId: string | null) => {
 
     if (!user || !recipientId) return;
 
-    // Realtime subscription
-    const channel = supabase
-      .channel(`chat:${[user.id, recipientId].sort().join('-')}`)
+    // Initialize Real-Time Protocol with broad filters but local refined logic
+    // Using a more specific channel name to avoid cross-talk if possible
+    const channelName = `chat:${[user.id, recipientId].sort().join('-')}`;
+    const messagesSubscription = supabase
+      .channel(channelName)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
+        { 
+          event: '*', 
+          schema: 'public', 
           table: 'messages',
-          filter: `receiver_id=eq.${user.id}`,
+          filter: `or(sender_id.eq.${user.id},receiver_id.eq.${user.id})` // Basic filter for user
         },
         (payload) => {
-          const newMessage = payload.new as Message;
-          if (newMessage.sender_id === recipientId) {
-            setMessages((prev) => [...prev, newMessage]);
+          if (payload.eventType === 'INSERT') {
+            const newMessage = payload.new as Message;
+            // Guard: check if this message belongs to the current conversation
+            const isRelevant = (newMessage.sender_id === user.id && newMessage.receiver_id === recipientId) || 
+                              (newMessage.sender_id === recipientId && newMessage.receiver_id === user.id);
+            
+            if (isRelevant) {
+              setMessages((prev) => {
+                // Prevent duplicate if optimistic update already injected it locally or already updated
+                if (prev.some((m) => m.id === newMessage.id)) return prev;
+                return [...prev, newMessage];
+              });
+            }
+          }
+          if (payload.eventType === 'UPDATE') {
+            const updatedMessage = payload.new as Message;
+            // Only update if it belongs to current conversation
+            const isRelevant = (updatedMessage.sender_id === user.id && updatedMessage.receiver_id === recipientId) || 
+                              (updatedMessage.sender_id === recipientId && updatedMessage.receiver_id === user.id);
+            
+            if (isRelevant) {
+              setMessages((prev) =>
+                prev.map((m) => (m.id === updatedMessage.id ? updatedMessage : m))
+              );
+            }
+          }
+          if (payload.eventType === 'DELETE') {
+            setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
           }
         }
       )
       .subscribe();
 
-    subscriptionRef.current = channel;
-
     return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
+      supabase.removeChannel(messagesSubscription);
     };
   }, [user, recipientId, fetchMessages]);
 

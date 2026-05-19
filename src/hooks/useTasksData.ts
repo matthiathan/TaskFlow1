@@ -26,6 +26,37 @@ export const useTasksData = () => {
 
   useEffect(() => {
     fetchTasks();
+
+    // Initialize Real-Time Protocol
+    const tasksSubscription = supabase
+      .channel('tasks-ops-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setTasks((prev) => {
+              // Prevent duplicate if optimistic update already injected it locally
+              if (prev.some((t) => t.id === payload.new.id)) return prev;
+              return [payload.new as Task, ...prev];
+            });
+          }
+          if (payload.eventType === 'UPDATE') {
+            setTasks((prev) =>
+              prev.map((t) => (t.id === payload.new.id ? (payload.new as Task) : t))
+            );
+          }
+          if (payload.eventType === 'DELETE') {
+            setTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(tasksSubscription);
+    };
   }, [fetchTasks]);
 
   const addTask = async (task: Omit<Task, 'id'>) => {

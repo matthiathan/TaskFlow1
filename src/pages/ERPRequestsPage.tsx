@@ -10,12 +10,15 @@ import {
   FileText,
   Image as ImageIcon,
   AlertTriangle,
-  ChevronDown
+  ChevronDown,
+  X,
+  File,
 } from 'lucide-react';
 import { useERPRequestsData } from '../hooks/useERPRequestsData';
 import { Button, Input, Card } from '../components/ui/Base';
 import { ERPRequest, ERPRequestStatus } from '../types/database';
 import { Spinner } from '../components/ui/LoadingScreen';
+import { FileUpload } from '../components/ui/FileUpload';
 
 export const ERPRequestsPage: React.FC = () => {
   const { requests, loading, addRequest, deleteRequest, updateStatus } = useERPRequestsData();
@@ -152,6 +155,69 @@ export const ERPRequestsPage: React.FC = () => {
                 required
               />
 
+              <div className="space-y-3">
+                <label className="block text-[10px] font-serif uppercase tracking-widest text-text-secondary font-medium">
+                  Media & Documentation Appendices
+                </label>
+                
+                {/* Image Upload */}
+                <div className="space-y-2">
+                  <p className="text-[9px] uppercase tracking-wider text-text-muted font-bold">Image Attachments</p>
+                  <FileUpload 
+                    bucket="erp_media"
+                    folderPath={`images/${new Date().toISOString().split('T')[0]}`}
+                    onUploadComplete={(url) => setFormData(p => ({ ...p, image_urls: [...p.image_urls, url] }))}
+                    accept="image/*"
+                  />
+                  {formData.image_urls.length > 0 && (
+                    <div className="flex gap-2 flex-wrap mt-2">
+                      {formData.image_urls.map((url, i) => (
+                        <div key={i} className="relative w-16 h-16 border border-brand-border rounded-sm overflow-hidden group">
+                          <img src={url} alt="Uploaded" className="w-full h-full object-cover" />
+                          <button 
+                            type="button"
+                            onClick={() => setFormData(p => ({ ...p, image_urls: p.image_urls.filter((_, idx) => idx !== i) }))}
+                            className="absolute top-0 right-0 p-0.5 bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Document Upload */}
+                <div className="space-y-2">
+                  <p className="text-[9px] uppercase tracking-wider text-text-muted font-bold">Document Logs (PDFs)</p>
+                  <FileUpload 
+                    bucket="erp_media"
+                    folderPath={`docs/${new Date().toISOString().split('T')[0]}`}
+                    onUploadComplete={(url) => setFormData(p => ({ ...p, documents: [...p.documents, url] }))}
+                    accept="application/pdf"
+                  />
+                  {formData.documents.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      {formData.documents.map((url, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 bg-bg-surface border border-brand-border rounded-sm group">
+                          <div className="flex items-center gap-2">
+                            <File size={12} className="text-brand-gold" />
+                            <span className="text-[10px] text-text-secondary truncate max-w-[150px]">Reference Document {i + 1}</span>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => setFormData(p => ({ ...p, documents: p.documents.filter((_, idx) => idx !== i) }))}
+                            className="text-text-muted hover:text-red-500 transition-colors"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <Button type="submit" className="w-full uppercase tracking-widest font-bold text-[10px] shadow-lg mt-4 h-11" isLoading={isSubmitting}>
                 Command Integration
               </Button>
@@ -219,6 +285,22 @@ export const ERPRequestsPage: React.FC = () => {
                           <div className="flex flex-col max-w-xs">
                             <span className="text-xs font-semibold text-text-primary">{req.title}</span>
                             <span className="text-[10px] text-text-secondary italic line-clamp-1">{req.issue}</span>
+                            {(req.image_urls.length > 0 || req.documents.length > 0) && (
+                              <div className="flex items-center gap-2 mt-2">
+                                {req.image_urls.length > 0 && (
+                                  <div className="flex items-center gap-1 text-[9px] text-brand-gold font-bold">
+                                    <ImageIcon size={10} />
+                                    {req.image_urls.length} IMG
+                                  </div>
+                                )}
+                                {req.documents.length > 0 && (
+                                  <div className="flex items-center gap-1 text-[9px] text-brand-gold font-bold">
+                                    <File size={10} />
+                                    {req.documents.length} DOC
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="whitespace-nowrap">

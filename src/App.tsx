@@ -10,6 +10,7 @@ import { ERPRequestsPage } from './pages/ERPRequestsPage';
 import { VerificationsPage } from './pages/VerificationsPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { SpecialTasksPage } from './pages/SpecialTasksPage';
+import { AdminUsersPage } from './pages/AdminUsersPage';
 import { LoadingScreen } from './components/ui/LoadingScreen';
 import { useAuth } from './contexts/AuthContext';
 
@@ -30,6 +31,11 @@ const AppRoutes = () => {
         <Route path="/special-tasks" element={<SpecialTasksPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/messages" element={<MessagesPage />} />
+      </Route>
+
+      {/* Strict Admin Only Routes */}
+      <Route element={<ProtectedRoute roles={['admin']} />}>
+        <Route path="/admin/users" element={<AdminUsersPage />} />
       </Route>
 
       {/* Admin/Tech Only Routes */}

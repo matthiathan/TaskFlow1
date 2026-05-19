@@ -10,14 +10,16 @@ import {
   MessageSquare,
   Calendar,
   Sun,
-  Moon
+  Moon,
+  Shield,
+  Target
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 
 export const Sidebar: React.FC = () => {
-  const { profile, isAdmin, isRoadTech } = useAuth();
+  const { profile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -29,11 +31,12 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'road_tech', 'user'] },
     { to: '/tasks', label: 'Operations Ops', icon: ClipboardList, roles: ['admin', 'road_tech', 'user'] },
-    { to: '/special-tasks', label: 'Special Ops', icon: ClipboardList, roles: ['admin', 'road_tech', 'user'] },
+    { to: '/special-tasks', label: 'Special Ops', icon: Target, roles: ['admin', 'road_tech', 'user'] },
     { to: '/calendar', label: 'Live Schedule', icon: Calendar, roles: ['admin', 'road_tech', 'user'] },
     { to: '/erp-requests', label: 'ERP Technical', icon: Settings, roles: ['admin', 'road_tech'] },
     { to: '/verifications', label: 'Asset Audits', icon: ShieldCheck, roles: ['admin', 'road_tech'] },
     { to: '/messages', label: 'Internal Comms', icon: MessageSquare, roles: ['admin', 'road_tech', 'user'] },
+    { to: '/admin/users', label: 'Access Control', icon: Shield, roles: ['admin'] },
   ];
 
   const filteredItems = navItems.filter(item => 
@@ -44,10 +47,10 @@ export const Sidebar: React.FC = () => {
     <div className="w-64 h-full bg-bg-surface text-text-primary flex flex-col shadow-2xl z-20 border-r border-brand-border transition-colors duration-300">
       <div className="p-8">
         <h1 className="text-2xl font-serif tracking-widest text-brand-gold italic">DALLMAYR</h1>
-        <p className="text-[9px] text-text-secondary uppercase tracking-[0.3em] mt-1">South Africa</p>
+        <p className="text-[9px] text-text-secondary uppercase tracking-[0.3em] mt-1">South RSA Regional Hub</p>
       </div>
 
-      <div className="flex-1 px-4 py-4 space-y-1">
+      <div className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
         {filteredItems.map((item) => (
           <NavLink
             key={item.to}

@@ -115,9 +115,10 @@ export const AdminPage: React.FC = () => {
   };
 
   const handleDeleteUser = async (id: string, name: string) => {
-    if (!confirm(`ADMIN OVERRIDE: Permanently purge ${name} from cluster?`)) return;
-    
+    const originalProfiles = [...profiles];
+    setProfiles(prev => prev.filter(p => p.id !== id));
     setActionLoading(id);
+    
     try {
       const response = await fetch(`/api/admin/users/${id}`, {
         method: 'DELETE',
@@ -128,8 +129,8 @@ export const AdminPage: React.FC = () => {
       if (!response.ok) throw new Error(result.error);
 
       toast.success('Personnel Purged Successfully');
-      setProfiles(prev => prev.filter(p => p.id !== id));
     } catch (err: any) {
+      setProfiles(originalProfiles);
       toast.error(`Purge Failed: ${err.message}`);
     } finally {
       setActionLoading(null);

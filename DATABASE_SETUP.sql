@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved')),
   due_date TIMESTAMPTZ,
-  user_id UUID REFERENCES public.profiles(id) NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   collaborators UUID[] DEFAULT '{}'
 );
 
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.tickets (
   serial_number TEXT,
   occurrence_time TIMESTAMPTZ,
   machine_images TEXT[] DEFAULT '{}',
-  user_id UUID REFERENCES public.profiles(id) NOT NULL
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.assets (
@@ -57,16 +57,16 @@ CREATE TABLE IF NOT EXISTS public.messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   content TEXT NOT NULL,
-  sender_id UUID REFERENCES public.profiles(id) NOT NULL,
-  recipient_id UUID REFERENCES public.profiles(id), -- NULL means global chat or system broadcast
-  recipient_profile_id UUID REFERENCES public.profiles(id) -- Added for easier relationship mapping if needed
+  sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  recipient_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE, -- NULL means global chat or system broadcast
+  recipient_profile_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE -- Added for easier relationship mapping if needed
 );
 
 -- 3.5 CONVERSATIONS TRACKING
 CREATE TABLE IF NOT EXISTS public.conversations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_a UUID REFERENCES public.profiles(id) NOT NULL,
-  user_b UUID REFERENCES public.profiles(id) NOT NULL,
+  user_a UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  user_b UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   last_message_at TIMESTAMPTZ DEFAULT NOW(),
   is_deleted_a BOOLEAN DEFAULT FALSE,
   is_deleted_b BOOLEAN DEFAULT FALSE,

@@ -99,7 +99,6 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
 
   const handleDelete = async () => {
     if (!initialData || !onDelete) return;
-    if (!confirm('ADMIN OVERRIDE: Permanently purge this directive from history?')) return;
     
     setDeleting(true);
     try {

@@ -84,6 +84,28 @@ export const useTasks = () => {
     }
   };
 
+  const updateTask = async (id: string, updates: Partial<Task>) => {
+    const originalTasks = [...tasks];
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setTasks(prev => prev.map(t => t.id === id ? data : t));
+      return data;
+    } catch (err: any) {
+      setTasks(originalTasks);
+      toast.error(`Update Failed: ${err.message}`);
+      throw err;
+    }
+  };
+
   const deleteTask = async (id: string) => {
     const originalTasks = [...tasks];
     setTasks(prev => prev.filter(t => t.id !== id));
@@ -102,5 +124,5 @@ export const useTasks = () => {
     }
   };
 
-  return { tasks, loading, addTask, updateTaskStatus, deleteTask, refresh: fetchTasks };
+  return { tasks, loading, addTask, updateTaskStatus, updateTask, deleteTask, refresh: fetchTasks };
 };

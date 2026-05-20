@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useTasks } from '../hooks/useTasks';
 import { Card, Button } from '../components/ui/Base';
+import { TaskFormModal } from '../components/tasks/TaskFormModal';
+import { Task } from '../types/database';
 import { 
   format, 
   addMonths, 
@@ -14,12 +16,14 @@ import {
   addDays, 
   eachDayOfInterval 
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const CalendarPage: React.FC = () => {
-  const { tasks } = useTasks();
+  const { tasks, updateTask, deleteTask } = useTasks();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -39,6 +43,17 @@ export const CalendarPage: React.FC = () => {
       if (!task.due_date) return false;
       return isSameDay(new Date(task.due_date), day);
     });
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+
+  const handleUpdateTask = async (data: any) => {
+    if (selectedTask) {
+      await updateTask(selectedTask.id, data);
+    }
   };
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -104,17 +119,21 @@ export const CalendarPage: React.FC = () => {
 
                 <div className="space-y-1 overflow-y-auto max-h-[90px] no-scrollbar">
                   {dayTasks.map(task => (
-                    <div 
+                    <button 
                       key={task.id}
+                      onClick={() => handleTaskClick(task)}
                       className={cn(
-                        "px-1.5 py-1 rounded border text-[8px] font-bold uppercase tracking-tight truncate",
+                        "w-full text-left px-1.5 py-1 rounded border text-[8px] font-bold uppercase tracking-tight truncate transition-all hover:scale-[1.02] active:scale-95",
                         task.priority === 'high' ? "bg-red-500/10 text-red-500 border-red-500/20" :
                         task.priority === 'medium' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
                         "bg-green-500/10 text-green-500 border-green-500/20"
                       )}
                     >
-                      {task.title}
-                    </div>
+                      <div className="flex items-center gap-1">
+                        {task.collaborators && task.collaborators.length > 0 && <Users className="w-2 h-2 flex-shrink-0" />}
+                        <span className="truncate">{task.title}</span>
+                      </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -137,6 +156,14 @@ export const CalendarPage: React.FC = () => {
           <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Strategic</span>
         </div>
       </div>
+
+      <TaskFormModal 
+        isOpen={isModalOpen}
+        onClose={() => { setIsModalOpen(false); setSelectedTask(null); }}
+        onSubmit={handleUpdateTask}
+        onDelete={deleteTask}
+        initialData={selectedTask}
+      />
     </div>
   );
 };

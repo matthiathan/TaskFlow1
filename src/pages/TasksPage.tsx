@@ -5,12 +5,32 @@ import { KanbanBoard } from '../components/tasks/KanbanBoard';
 import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { Button, Card } from '../components/ui/Base';
 import { LayoutGrid, List, Plus, Loader2 } from 'lucide-react';
+import { Task } from '../types/database';
 import { cn } from '../lib/utils';
 
 export const TasksPage: React.FC = () => {
-  const { tasks, loading, addTask, updateTaskStatus, deleteTask } = useTasks();
+  const { tasks, loading, addTask, updateTaskStatus, updateTask, deleteTask } = useTasks();
   const [view, setView] = useState<'list' | 'kanban'>('kanban');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+
+  const handleOpenEdit = (task: Task) => {
+    setEditTask(task);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditTask(null);
+  };
+
+  const handleSubmit = async (data: any) => {
+    if (editTask) {
+      await updateTask(editTask.id, data);
+    } else {
+      await addTask(data);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -60,12 +80,14 @@ export const TasksPage: React.FC = () => {
             <TaskList 
               tasks={tasks} 
               onUpdateStatus={updateTaskStatus} 
-              onDelete={deleteTask} 
+              onDelete={deleteTask}
+              onEdit={handleOpenEdit}
             />
           ) : (
             <KanbanBoard 
               tasks={tasks} 
               onUpdateStatus={updateTaskStatus} 
+              onEdit={handleOpenEdit}
             />
           )}
         </div>
@@ -73,8 +95,10 @@ export const TasksPage: React.FC = () => {
 
       <TaskFormModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSubmit={addTask} 
+        onClose={handleCloseModal} 
+        onSubmit={handleSubmit} 
+        onDelete={deleteTask}
+        initialData={editTask}
       />
     </div>
   );

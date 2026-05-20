@@ -3,11 +3,12 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { motion, AnimatePresence } from 'motion/react';
 import { Task, TaskStatus } from '../../types/database';
 import { cn } from '../../lib/utils';
-import { GripVertical, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { GripVertical, AlertCircle, Clock, CheckCircle2, Users } from 'lucide-react';
 
 interface KanbanBoardProps {
   tasks: Task[];
   onUpdateStatus: (id: string, status: TaskStatus) => void;
+  onEdit: (task: Task) => void;
 }
 
 const COLUMNS: { id: TaskStatus; title: string }[] = [
@@ -16,21 +17,24 @@ const COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: 'resolved', title: 'Resolved' },
 ];
 
-const TaskCard: React.FC<{ task: Task; index: number }> = ({ task, index }) => {
+const TaskCard: React.FC<{ task: Task; index: number; onEdit: (task: Task) => void }> = ({ task, index, onEdit }) => {
   return (
     <Draggable draggableId={task.id} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
+          onClick={() => onEdit(task)}
           className={cn(
-            'p-3 bg-bg-base border border-brand-border rounded-lg shadow-sm group relative transition-shadow',
-            snapshot.isDragging && 'shadow-2xl border-brand-gold ring-1 ring-brand-gold/20'
+            'p-3 bg-bg-base border border-brand-border rounded-lg shadow-sm group relative transition-all cursor-pointer',
+            snapshot.isDragging && 'shadow-2xl border-brand-gold ring-1 ring-brand-gold/20 scale-105 z-50',
+            !snapshot.isDragging && 'hover:border-brand-gold/50 hover:shadow-md'
           )}
         >
           <div 
             {...provided.dragHandleProps} 
             className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing p-1 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
           >
             <GripVertical className="w-3 h-3 text-text-secondary" />
           </div>
@@ -48,13 +52,21 @@ const TaskCard: React.FC<{ task: Task; index: number }> = ({ task, index }) => {
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between">
-            <div className={cn(
-              'text-[8px] font-black uppercase px-1.5 py-0.5 rounded border',
-              task.priority === 'high' ? 'text-red-500 border-red-500/20 bg-red-500/5' :
-              task.priority === 'medium' ? 'text-blue-500 border-blue-500/20 bg-blue-500/5' :
-              'text-neutral-500 border-neutral-500/20 bg-neutral-500/5'
-            )}>
-              {task.priority}
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                'text-[8px] font-black uppercase px-1.5 py-0.5 rounded border',
+                task.priority === 'high' ? 'text-red-500 border-red-500/20 bg-red-500/5' :
+                task.priority === 'medium' ? 'text-blue-500 border-blue-500/20 bg-blue-500/5' :
+                'text-neutral-500 border-neutral-500/20 bg-neutral-500/5'
+              )}>
+                {task.priority}
+              </div>
+              {task.collaborators && task.collaborators.length > 0 && (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-brand-gold/10 rounded border border-brand-gold/20 text-brand-gold text-[7px] font-black uppercase">
+                  <Users className="w-2 h-2" />
+                  Shared
+                </div>
+              )}
             </div>
             {task.due_date && (
               <div className="text-[8px] text-text-secondary font-medium">
@@ -68,7 +80,7 @@ const TaskCard: React.FC<{ task: Task; index: number }> = ({ task, index }) => {
   );
 };
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateStatus }) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateStatus, onEdit }) => {
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -120,7 +132,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateStatus 
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <TaskCard task={task} index={index} />
+                        <TaskCard task={task} index={index} onEdit={onEdit} />
                       </motion.div>
                     ))}
                   </AnimatePresence>

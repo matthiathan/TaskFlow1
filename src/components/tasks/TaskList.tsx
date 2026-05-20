@@ -1,13 +1,14 @@
 import React from 'react';
 import { Task, TaskPriority, TaskStatus } from '../../types/database';
 import { cn } from '../../lib/utils';
-import { AlertCircle, Clock, CheckCircle2, ChevronRight, Trash2 } from 'lucide-react';
+import { AlertCircle, Clock, CheckCircle2, Trash2, Edit2, Users } from 'lucide-react';
 import { Button } from '../ui/Base';
 
 interface TaskListProps {
   tasks: Task[];
   onUpdateStatus: (id: string, status: TaskStatus) => void;
   onDelete: (id: string) => void;
+  onEdit: (task: Task) => void;
 }
 
 const PriorityBadge: React.FC<{ priority: TaskPriority }> = ({ priority }) => {
@@ -32,7 +33,7 @@ const StatusIcon: React.FC<{ status: TaskStatus }> = ({ status }) => {
   }
 };
 
-export const TaskList: React.FC<TaskListProps> = ({ tasks, onUpdateStatus, onDelete }) => {
+export const TaskList: React.FC<TaskListProps> = ({ tasks, onUpdateStatus, onDelete, onEdit }) => {
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-brand-border rounded-xl">
@@ -56,6 +57,12 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onUpdateStatus, onDel
             <div className="flex items-center gap-2 mb-0.5">
               <h3 className="text-sm font-semibold truncate text-text-primary">{task.title}</h3>
               <PriorityBadge priority={task.priority} />
+              {task.collaborators && task.collaborators.length > 0 && (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-brand-gold/10 rounded border border-brand-gold/20 text-brand-gold text-[8px] font-black uppercase">
+                  <Users className="w-3 h-3" />
+                  Shared
+                </div>
+              )}
             </div>
             <p className="text-xs text-text-secondary truncate">{task.description || 'No additional parameters provided.'}</p>
           </div>
@@ -70,6 +77,14 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onUpdateStatus, onDel
               <option value="in_progress">Active</option>
               <option value="resolved">Resolved</option>
             </select>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onEdit(task)}
+              className="hover:text-brand-gold"
+            >
+              <Edit2 className="w-4 h-4" />
+            </Button>
             <Button 
               variant="ghost" 
               size="icon" 

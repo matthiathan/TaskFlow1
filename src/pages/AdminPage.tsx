@@ -1,23 +1,58 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Profile, Role } from '../types/database';
-import { Card, Button } from '../components/ui/Base';
-import { ShieldCheck, Users, Search, Filter, ShieldAlert, Check } from 'lucide-react';
+import { Profile, Role, TaskPriority } from '../types/database';
+import { Card, Button, Input } from '../components/ui/Base';
+import { 
+  ShieldCheck, 
+  Users, 
+  Search, 
+  ShieldAlert, 
+  Trash2, 
+  Key, 
+  UserPlus, 
+  X, 
+  Lock,
+  Mail,
+  User as UserIcon,
+  Loader2,
+  RefreshCw
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
 export const AdminPage: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState<{id: string, name: string} | null>(null);
+  
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    full_name: '',
+    role: 'user' as Role
+  });
+
+  const [resetPassword, setResetPassword] = useState('');
 
   useEffect(() => {
     fetchProfiles();
   }, []);
 
+  const getHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token}`
+    };
+  };
+
   const fetchProfiles = async () => {
     try {
       setLoading(true);
+      // We still fetch profiles from DB for immediate UI, 
+      // but we could also fetch Auth users if we need metadata parity
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -26,64 +61,142 @@ export const AdminPage: React.FC = () => {
       if (error) throw error;
       setProfiles(data || []);
     } catch (err: any) {
-      toast.error(`Admin Link Failed: ${err.message}`);
+      toast.error(`Admin Sync Failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const updateRole = async (userId: string, role: Role) => {
-    setUpdating(userId);
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionLoading('create');
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role })
-        .eq('id', userId);
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: await getHeaders(),
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
 
-      if (error) throw error;
+      toast.success('Personnel Enrolled Successfully');
+      setShowCreateModal(false);
+      setFormData({ email: '', password: '', full_name: '', role: 'user' });
+      fetchProfiles();
+    } catch (err: any) {
+      toast.error(`Enrollment Failed: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!showResetModal || !resetPassword) return;
+    setActionLoading('reset');
+    try {
+      const response = await fetch(`/api/admin/users/${showResetModal.id}`, {
+        method: 'PATCH',
+        headers: await getHeaders(),
+        body: JSON.stringify({ password: resetPassword })
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast.success(`Identity Vectors Reset for ${showResetModal.name}`);
+      setShowResetModal(null);
+      setResetPassword('');
+    } catch (err: any) {
+      toast.error(`Reset Failed: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteUser = async (id: string, name: string) => {
+    if (!confirm(`ADMIN OVERRIDE: Permanently purge ${name} from cluster?`)) return;
+    
+    setActionLoading(id);
+    try {
+      const response = await fetch(`/api/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: await getHeaders()
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast.success('Personnel Purged Successfully');
+      setProfiles(prev => prev.filter(p => p.id !== id));
+    } catch (err: any) {
+      toast.error(`Purge Failed: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const updateRole = async (userId: string, role: Role) => {
+    setActionLoading(userId);
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: await getHeaders(),
+        body: JSON.stringify({ role })
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
       setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role } : p));
-      toast.success(`Security Clearance Updated: ${role.toUpperCase()}`);
+      toast.success(`Clearance Updated: ${role.toUpperCase()}`);
     } catch (err: any) {
       toast.error(`Override Failed: ${err.message}`);
     } finally {
-      setUpdating(null);
+      setActionLoading(null);
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Security Oversight</h1>
-          <p className="text-text-secondary text-sm mt-1">Personnel management and RBAC authorization protocols.</p>
+          <p className="text-text-secondary text-sm mt-1">Direct management of human assets and operational clearances.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary group-focus-within:text-brand-gold transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search Personnel ID..." 
-              className="bg-bg-elevated border border-brand-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-brand-gold transition-all w-64"
-            />
-          </div>
+        
+        <div className="flex items-center gap-4">
+          <Button 
+            onClick={() => setShowCreateModal(true)}
+            className="px-6 uppercase font-black text-[10px] tracking-[0.2em]"
+          >
+            <UserPlus className="w-4 h-4" />
+            Enroll Personnel
+          </Button>
+          <button 
+            onClick={fetchProfiles}
+            className="p-2.5 bg-bg-elevated border border-brand-border rounded-xl hover:border-brand-gold transition-colors"
+          >
+            <RefreshCw className={cn("w-4 h-4 text-text-secondary", loading && "animate-spin")} />
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-brand-border">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-bg-elevated/50 border-b border-brand-border">
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Personnel</th>
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Clearance</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Joined</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Actions</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary text-right">Administrative Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border">
-                {loading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
+                {loading && profiles.length === 0 ? (
+                  Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
                       <td colSpan={4} className="px-6 py-8">
                         <div className="h-4 bg-bg-elevated rounded w-full" />
@@ -91,55 +204,63 @@ export const AdminPage: React.FC = () => {
                     </tr>
                   ))
                 ) : profiles.map((profile) => (
-                  <tr key={profile.id} className="hover:bg-bg-elevated/30 transition-colors">
+                  <tr key={profile.id} className="hover:bg-bg-elevated/30 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center overflow-hidden">
+                        <div className="w-10 h-10 rounded-full bg-brand-gold/10 border border-brand-border flex items-center justify-center overflow-hidden">
                           {profile.avatar_url ? (
                             <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <ShieldCheck className="w-5 h-5 text-brand-gold" />
+                            <UserIcon className="w-5 h-5 text-brand-gold" />
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-text-primary">{profile.full_name || 'Anonymous Agent'}</p>
-                          <p className="text-[10px] text-text-secondary font-medium">{profile.email}</p>
+                          <p className="text-sm font-bold text-text-primary">{profile.full_name || 'ANONYMOUS AGENT'}</p>
+                          <p className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{profile.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
-                        profile.role === 'admin' ? "bg-red-500/10 text-red-500 border-red-500/20" :
-                        profile.role === 'tech' ? "bg-brand-gold/10 text-brand-gold border-brand-gold/20" :
-                        "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                      )}>
-                        {profile.role === 'admin' && <ShieldAlert className="w-3 h-3" />}
-                        {profile.role}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-[10px] font-bold text-text-secondary uppercase">
-                        {new Date(profile.created_at).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         {(['user', 'tech', 'admin'] as Role[]).map((r) => (
                           <button
                             key={r}
                             onClick={() => updateRole(profile.id, r)}
-                            disabled={profile.role === r || updating === profile.id}
+                            disabled={profile.role === r || actionLoading === profile.id}
                             className={cn(
-                              "px-2 py-1 text-[8px] font-black uppercase rounded transition-all",
+                              "px-2 py-1 text-[8px] font-black uppercase rounded border transition-all",
                               profile.role === r 
-                                ? "bg-brand-gold text-white" 
-                                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated border border-brand-border"
+                                ? r === 'admin' ? "bg-red-500 text-white border-red-500" : "bg-brand-gold text-white border-brand-gold"
+                                : "text-text-secondary border-brand-border hover:border-brand-gold hover:text-brand-gold"
                             )}
                           >
                             {r}
                           </button>
                         ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[9px] font-black uppercase text-text-secondary tracking-widest bg-bg-base border border-brand-border px-2 py-0.5 rounded">
+                        ACTIVE NODE
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => setShowResetModal({ id: profile.id, name: profile.full_name || profile.email })}
+                          className="p-2 bg-bg-elevated border border-brand-border rounded-lg text-text-secondary hover:text-brand-gold hover:border-brand-gold transition-all"
+                          title="Override Passcode"
+                        >
+                          <Key className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteUser(profile.id, profile.full_name || profile.email)}
+                          disabled={actionLoading === profile.id}
+                          className="p-2 bg-bg-elevated border border-brand-border rounded-lg text-text-secondary hover:text-red-500 hover:border-red-500 transition-all"
+                          title="Purge Identity"
+                        >
+                          {actionLoading === profile.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -150,35 +271,141 @@ export const AdminPage: React.FC = () => {
         </Card>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="p-6 border-l-4 border-l-red-500">
-          <div className="flex gap-4">
-            <div className="p-3 bg-red-500/10 rounded-xl h-fit">
-              <ShieldAlert className="w-6 h-6 text-red-500" />
+      {/* Enrollment Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="w-full max-w-md p-8 bg-bg-elevated border-brand-gold/30 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-brand-gold/10 rounded-xl">
+                  <UserPlus className="w-5 h-5 text-brand-gold" />
+                </div>
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-text-primary">Enroll Personnel</h3>
+              </div>
+              <button onClick={() => setShowCreateModal(false)} className="text-text-secondary hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div>
-              <h4 className="text-xs font-black uppercase tracking-widest text-text-primary mb-1">Administrative Warning</h4>
-              <p className="text-[10px] text-text-secondary leading-relaxed uppercase tracking-tight">
-                Role modification affects entire cluster access. Ensure personnel verification before escalating security clearing.
-              </p>
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <Input 
+                label="Personnel Name"
+                icon={<UserIcon className="w-4 h-4" />}
+                value={formData.full_name}
+                onChange={e => setFormData(p => ({ ...p, full_name: e.target.value }))}
+                placeholder="Agent designation..."
+                required
+              />
+              <Input 
+                label="Email Uplink"
+                type="email"
+                icon={<Mail className="w-4 h-4" />}
+                value={formData.email}
+                onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
+                placeholder="security@uplink.net"
+                required
+              />
+              <Input 
+                label="Initial Passcode"
+                type="password"
+                icon={<Lock className="w-4 h-4" />}
+                value={formData.password}
+                onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
+                placeholder="••••••••"
+                required
+              />
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Security Clearance</label>
+                <select 
+                  className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-gold transition-all"
+                  value={formData.role}
+                  onChange={e => setFormData(p => ({ ...p, role: e.target.value as Role }))}
+                >
+                  <option value="user">USER - Standard</option>
+                  <option value="tech">TECH - Field Access</option>
+                  <option value="admin">ADMIN - Global Override</option>
+                </select>
+              </div>
+
+              <Button 
+                type="submit" 
+                isLoading={actionLoading === 'create'} 
+                className="w-full py-4 uppercase font-black text-[10px] tracking-[0.2em] mt-4"
+              >
+                Establish Credentials
+              </Button>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="w-full max-w-sm p-8 bg-bg-elevated border-brand-gold/30 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-brand-gold/10 rounded-xl">
+                  <Key className="w-5 h-5 text-brand-gold" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-text-primary">Passcode Override</h3>
+                  <p className="text-[10px] font-bold text-text-secondary uppercase">{showResetModal.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowResetModal(null)} className="text-text-secondary hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          </div>
-        </Card>
-        
-        <Card className="p-6 border-l-4 border-l-brand-gold">
-          <div className="flex gap-4">
-            <div className="p-3 bg-brand-gold/10 rounded-xl h-fit">
-              <Users className="w-6 h-6 text-brand-gold" />
+
+            <div className="space-y-6">
+              <Input 
+                label="New Override String"
+                type="password"
+                icon={<Lock className="w-4 h-4" />}
+                value={resetPassword}
+                onChange={e => setResetPassword(e.target.value)}
+                placeholder="Enter new credentials..."
+                required
+              />
+
+              <div className="flex gap-3">
+                <Button 
+                  variant="secondary" 
+                  onClick={() => setShowResetModal(null)}
+                  className="flex-grow py-3 uppercase text-[9px] font-black"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleResetPassword}
+                  isLoading={actionLoading === 'reset'}
+                  className="flex-[2] py-3 uppercase text-[9px] font-black"
+                >
+                  Confirm Reset
+                </Button>
+              </div>
             </div>
-            <div>
-              <h4 className="text-xs font-black uppercase tracking-widest text-text-primary mb-1">Automatic Enrollment</h4>
-              <p className="text-[10px] text-text-secondary leading-relaxed uppercase tracking-tight">
-                Database trigger automatically assigns 'USER' clearance to all new entities.
-              </p>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
+      )}
+
+      {/* Warning Panel */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80">
+        <div className="flex gap-4 p-4 bg-red-500/5 border border-red-500/10 rounded-2xl">
+          <ShieldAlert className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <p className="text-[10px] text-text-secondary leading-relaxed uppercase tracking-tight font-medium">
+            <strong className="text-red-500">Node Termination:</strong> Deleting a user will permanently revoke access. This action cannot be undone within the current cluster epoch.
+          </p>
+        </div>
+        <div className="flex gap-4 p-4 bg-brand-gold/5 border border-brand-gold/10 rounded-2xl">
+          <Lock className="w-5 h-5 text-brand-gold flex-shrink-0" />
+          <p className="text-[10px] text-text-secondary leading-relaxed uppercase tracking-tight font-medium">
+            <strong className="text-brand-gold">Administrative Proxy:</strong> All resets and creations are logged via the secure backend proxy using service-level clearance.
+          </p>
+        </div>
       </div>
     </div>
   );
 };
+

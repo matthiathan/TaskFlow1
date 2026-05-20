@@ -10,6 +10,7 @@ export interface Task {
   status: TaskStatus;
   due_date: string | null;
   user_id: string;
+  collaborators: string[];
 }
 
 export type Role = 'user' | 'tech' | 'admin';

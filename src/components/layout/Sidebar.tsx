@@ -22,9 +22,10 @@ import { cn } from '../../lib/utils';
 const navItems = [
   { icon: LayoutDashboard, label: 'Ops Desk', path: '/dashboard', roles: ['user', 'tech', 'admin'] },
   { icon: CheckSquare, label: 'Task Intel', path: '/tasks', roles: ['user', 'tech', 'admin'] },
-  { icon: CalendarIcon, label: 'Scheduling', path: '/calendar', roles: ['tech', 'admin'] },
-  { icon: ClipboardList, label: 'Reporting Hub', path: '/reporting', roles: ['user', 'tech', 'admin'] },
+  { icon: CalendarIcon, label: 'Scheduling', path: '/calendar', roles: ['user', 'tech', 'admin'] },
+  { icon: ClipboardList, label: 'Reporting Hub', path: '/reporting', roles: ['tech', 'admin'] },
   { icon: MessageSquare, label: 'Secure Comms', path: '/chat', roles: ['user', 'tech', 'admin'] },
+  { icon: Settings, label: 'Security Panel', path: '/settings', roles: ['user', 'tech', 'admin'] },
   { icon: ShieldCheck, label: 'Admin Hub', path: '/admin', roles: ['admin'] },
 ];
 

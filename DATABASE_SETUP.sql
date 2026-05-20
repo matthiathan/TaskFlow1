@@ -24,8 +24,9 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   description TEXT,
   priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved')),
-  due_date DATE,
-  user_id UUID REFERENCES public.profiles(id) NOT NULL
+  due_date TIMESTAMPTZ,
+  user_id UUID REFERENCES public.profiles(id) NOT NULL,
+  collaborators UUID[] DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS public.tickets (
@@ -103,14 +104,30 @@ CREATE POLICY "Public profiles are viewable by everyone." ON public.profiles
 CREATE POLICY "Users can update own profile." ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
--- TASKS: Everyone can view. Tech/Admin can manage everything. Users can manage their own.
-CREATE POLICY "Tasks viewable by authenticated users" ON public.tasks FOR SELECT USING (true);
-CREATE POLICY "Users can create tasks" ON public.tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Owners, Techs, and Admins can update tasks" ON public.tasks FOR UPDATE USING (
+-- TASKS: Owners and collaborators or Tech/Admin can view.
+DROP POLICY IF EXISTS "Tasks visibility" ON public.tasks;
+DROP POLICY IF EXISTS "Tasks viewable by authenticated users" ON public.tasks;
+CREATE POLICY "Tasks visibility" ON public.tasks FOR SELECT USING (
   auth.uid() = user_id OR 
+  auth.uid() = ANY(collaborators) OR
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('tech', 'admin'))
 );
-CREATE POLICY "Admins can delete tasks" ON public.tasks FOR DELETE USING (
+
+DROP POLICY IF EXISTS "Users can create tasks" ON public.tasks;
+CREATE POLICY "Users can create tasks" ON public.tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Owners, collaborators, techs, and admins can update tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Owners, Techs, and Admins can update tasks" ON public.tasks;
+CREATE POLICY "Owners, collaborators, techs, and admins can update tasks" ON public.tasks FOR UPDATE USING (
+  auth.uid() = user_id OR 
+  auth.uid() = ANY(collaborators) OR
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('tech', 'admin'))
+);
+
+DROP POLICY IF EXISTS "Owners and Admins can delete tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Admins can delete tasks" ON public.tasks;
+CREATE POLICY "Owners and Admins can delete tasks" ON public.tasks FOR DELETE USING (
+  auth.uid() = user_id OR
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
 );
 

@@ -3,12 +3,14 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { createClient } from '@supabase/supabase-js';
 import dotenv from "dotenv";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
+app.use(cors()); // Enable CORS for external access
 app.use(express.json());
 
 // Initialize Supabase Admin Client (Service Role)
@@ -55,6 +57,52 @@ const adminAuth = async (req: any, res: any, next: any) => {
     res.status(401).json({ error: "Authentication failed" });
   }
 };
+
+// External API Middleware: Verify API Key
+const externalAuth = (req: any, res: any, next: any) => {
+  const apiKey = req.headers['x-api-key'];
+  const validKey = process.env.EXTERNAL_TASK_API_KEY;
+
+  if (!validKey) {
+    return res.status(500).json({ error: "External API not configured" });
+  }
+
+  if (apiKey !== validKey) {
+    return res.status(401).json({ error: "Invalid API Key" });
+  }
+
+  next();
+};
+
+// --- EXTERNAL API ENDPOINTS ---
+
+// Expose tasks for external applications
+app.get("/api/external/tasks", externalAuth, async (req, res) => {
+  try {
+    const { data: tasks, error } = await supabaseAdmin
+      .from('tasks')
+      .select(`
+        id,
+        created_at,
+        title,
+        description,
+        priority,
+        status,
+        due_date,
+        user_id,
+        profiles (
+          full_name,
+          role
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json({ tasks });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // --- ADMIN API ENDPOINTS ---
 

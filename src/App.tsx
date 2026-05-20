@@ -13,6 +13,7 @@ import { TicketingPage } from './pages/TicketingPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdminPage } from './pages/AdminPage';
+import { ApiAccessPage } from './pages/ApiAccessPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { useAuth } from './contexts/AuthContext';
@@ -77,6 +78,7 @@ function AppContent() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/reporting" element={role === 'tech' || role === 'admin' ? <TicketingPage /> : <Navigate to="/dashboard" replace />} />
           <Route path="/chat" element={<MessagesPage />} />
+          <Route path="/api-access" element={role === 'tech' || role === 'admin' ? <ApiAccessPage /> : <Navigate to="/dashboard" replace />} />
           <Route path="/admin" element={role === 'admin' ? <AdminPage /> : <Navigate to="/dashboard" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

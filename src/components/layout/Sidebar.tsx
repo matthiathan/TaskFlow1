@@ -12,7 +12,8 @@ import {
   Moon,
   Sun,
   LayoutDashboard,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Key
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -25,6 +26,7 @@ const navItems = [
   { icon: CalendarIcon, label: 'Scheduling', path: '/calendar', roles: ['user', 'tech', 'admin'] },
   { icon: ClipboardList, label: 'Reporting Hub', path: '/reporting', roles: ['tech', 'admin'] },
   { icon: MessageSquare, label: 'Secure Comms', path: '/chat', roles: ['user', 'tech', 'admin'] },
+  { icon: Key, label: 'API Access', path: '/api-access', roles: ['tech', 'admin'] },
   { icon: Settings, label: 'Security Panel', path: '/settings', roles: ['user', 'tech', 'admin'] },
   { icon: ShieldCheck, label: 'Admin Hub', path: '/admin', roles: ['admin'] },
 ];

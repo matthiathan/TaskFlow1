@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { createClient } from '@supabase/supabase-js';
 import dotenv from "dotenv";
 import cors from "cors";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -27,6 +28,24 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
     persistSession: false
   }
 });
+
+// Base Auth Middleware: Verify token and attach user
+const auth = async (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: "No credentials" });
+
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    
+    if (error || !user) throw new Error("Invalid token");
+
+    req.user = user;
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Authentication failed" });
+  }
+};
 
 // Admin Middleware: Verify requesting user is an admin
 const adminAuth = async (req: any, res: any, next: any) => {
@@ -58,21 +77,64 @@ const adminAuth = async (req: any, res: any, next: any) => {
   }
 };
 
-// External API Middleware: Verify API Key
-const externalAuth = (req: any, res: any, next: any) => {
+// External API Middleware: Verify API Key from DB
+const externalAuth = async (req: any, res: any, next: any) => {
   const apiKey = req.headers['x-api-key'];
-  const validKey = process.env.EXTERNAL_TASK_API_KEY;
-
-  if (!validKey) {
-    return res.status(500).json({ error: "External API not configured" });
+  
+  if (!apiKey) {
+    return res.status(401).json({ error: "API Key required" });
   }
 
-  if (apiKey !== validKey) {
-    return res.status(401).json({ error: "Invalid API Key" });
-  }
+  try {
+    // Check if any profile has this API key
+    const { data: profile, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('api_key', apiKey)
+      .single();
 
-  next();
+    if (error || !profile) {
+      return res.status(401).json({ error: "Invalid API Key" });
+    }
+
+    req.user = profile;
+    next();
+  } catch (err) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
+
+// --- API KEY MANAGEMENT ---
+
+// Get current user's API key
+app.get("/api/api-key", auth, async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .select('api_key')
+      .eq('id', req.user.id)
+      .single();
+    if (error) throw error;
+    res.json({ apiKey: data.api_key });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generate/Regenerate API key
+app.post("/api/api-key", auth, async (req: any, res: any) => {
+  try {
+    const newKey = `ops_${crypto.randomUUID().replace(/-/g, '')}`;
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ api_key: newKey })
+      .eq('id', req.user.id);
+    if (error) throw error;
+    res.json({ apiKey: newKey });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // --- EXTERNAL API ENDPOINTS ---
 

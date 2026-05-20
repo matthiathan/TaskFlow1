@@ -184,9 +184,9 @@ export const AdminPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <Card className="overflow-hidden border-brand-border">
+        <Card className="border-brand-border">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[800px]">
               <thead>
                 <tr className="bg-bg-elevated/50 border-b border-brand-border">
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Personnel</th>

@@ -22,16 +22,16 @@ export const Modal: React.FC<ModalProps> = ({ id, isOpen, onClose, title, childr
       
       <div 
         id={id}
-        className="relative bg-bg-base border border-brand-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+        className="relative bg-bg-base border border-brand-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200"
       >
-        <div className="flex items-center justify-between p-6 border-b border-brand-border">
+        <div className="flex items-center justify-between p-6 border-b border-brand-border flex-shrink-0">
           <h2 className="text-xl font-bold tracking-tight text-text-primary font-serif uppercase tracking-widest">{title}</h2>
           <button onClick={onClose} className="p-2 text-text-secondary hover:text-red-500 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
         
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto">
           {children}
         </div>
       </div>

@@ -79,9 +79,10 @@ export const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      <Card className="overflow-hidden border-brand-border">
-        {/* Day Headers */}
-        <div className="grid grid-cols-7 border-b border-brand-border bg-bg-elevated/50">
+      <div className="overflow-x-auto">
+        <Card className="min-w-[600px] overflow-hidden border-brand-border">
+          {/* Day Headers */}
+          <div className="grid grid-cols-7 border-b border-brand-border bg-bg-elevated/50">
           {dayNames.map(day => (
             <div key={day} className="py-3 text-center">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">{day}</span>
@@ -141,6 +142,7 @@ export const CalendarPage: React.FC = () => {
           })}
         </div>
       </Card>
+      </div>
 
       <div className="mt-6 flex items-center gap-6 px-4">
         <div className="flex items-center gap-2">

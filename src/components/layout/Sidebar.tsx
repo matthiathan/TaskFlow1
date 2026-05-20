@@ -29,14 +29,14 @@ const navItems = [
   { icon: ShieldCheck, label: 'Admin Hub', path: '/admin', roles: ['admin'] },
 ];
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { theme, toggleTheme } = useTheme();
-  const { profile, role, logout } = useAuth() as any; // Cast for now, will add logout to type
+  const { profile, role } = useAuth() as any; 
 
   const allowedItems = navItems.filter(item => item.roles.includes(role || 'user'));
 
   return (
-    <aside className="w-64 h-screen border-r border-brand-border bg-bg-elevated flex flex-col fixed left-0 top-0 z-40">
+    <aside className="w-64 h-full border-r border-brand-border bg-bg-elevated flex flex-col">
       <div className="p-6">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 bg-brand-gold flex items-center justify-center rounded-xl shadow-lg shadow-brand-gold/20">
@@ -53,6 +53,7 @@ export const Sidebar: React.FC = () => {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onClose}
               className={({ isActive }) => cn(
                 'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group',
                 isActive 

@@ -1,110 +1,107 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  ShieldCheck, 
+  BarChart3, 
+  CheckSquare, 
+  MessageSquare, 
+  ClipboardList,
+  Users, 
   Settings, 
+  ShieldCheck, 
   LogOut,
-  ChevronRight,
-  MessageSquare,
-  Calendar,
-  Sun,
   Moon,
-  Shield,
-  Target
+  Sun,
+  LayoutDashboard,
+  Calendar as CalendarIcon
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { cn } from '../../lib/utils';
+
+const navItems = [
+  { icon: LayoutDashboard, label: 'Ops Desk', path: '/dashboard', roles: ['user', 'tech', 'admin'] },
+  { icon: CheckSquare, label: 'Task Intel', path: '/tasks', roles: ['user', 'tech', 'admin'] },
+  { icon: CalendarIcon, label: 'Scheduling', path: '/calendar', roles: ['tech', 'admin'] },
+  { icon: ClipboardList, label: 'Reporting Hub', path: '/reporting', roles: ['user', 'tech', 'admin'] },
+  { icon: MessageSquare, label: 'Secure Comms', path: '/chat', roles: ['user', 'tech', 'admin'] },
+  { icon: ShieldCheck, label: 'Admin Hub', path: '/admin', roles: ['admin'] },
+];
 
 export const Sidebar: React.FC = () => {
-  const { profile, role } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
+  const { profile, role, logout } = useAuth() as any; // Cast for now, will add logout to type
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
-
-  const navItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'road_tech', 'user'] },
-    { to: '/tasks', label: 'Operations Ops', icon: ClipboardList, roles: ['admin', 'road_tech', 'user'] },
-    { to: '/special-tasks', label: 'Special Ops', icon: Target, roles: ['admin', 'road_tech', 'user'] },
-    { to: '/calendar', label: 'Live Schedule', icon: Calendar, roles: ['admin', 'road_tech', 'user'] },
-    { to: '/erp-requests', label: 'ERP Technical', icon: Settings, roles: ['admin', 'road_tech'] },
-    { to: '/verifications', label: 'Asset Audits', icon: ShieldCheck, roles: ['admin', 'road_tech'] },
-    { to: '/messages', label: 'Internal Comms', icon: MessageSquare, roles: ['admin', 'road_tech', 'user'] },
-    { to: '/admin/users', label: 'Access Control', icon: Shield, roles: ['admin'] },
-  ];
-
-  const filteredItems = navItems.filter(item => 
-    role && item.roles.includes(role)
-  );
+  const allowedItems = navItems.filter(item => item.roles.includes(role || 'user'));
 
   return (
-    <div className="w-64 h-full bg-bg-surface text-text-primary flex flex-col shadow-2xl z-20 border-r border-brand-border transition-colors duration-300">
-      <div className="p-8">
-        <h1 className="text-2xl font-serif tracking-widest text-brand-gold italic">DALLMAYR</h1>
-        <p className="text-[9px] text-text-secondary uppercase tracking-[0.3em] mt-1">South RSA Regional Hub</p>
-      </div>
-
-      <div className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-        {filteredItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) => `
-              group flex items-center justify-between px-4 py-3 text-xs tracking-wider uppercase transition-all duration-300
-              ${isActive 
-                ? 'bg-brand-gold text-brand-charcoal font-semibold border-r-4 border-brand-charcoal' 
-                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'}
-            `}
-          >
-            {({ isActive }) => (
-              <>
-                <div className="flex items-center gap-4">
-                  <item.icon className={`w-4 h-4 shadow-sm ${isActive ? 'text-brand-charcoal' : 'text-brand-gold'}`} />
-                  <span>{item.label}</span>
-                </div>
-                <ChevronRight className={`w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity ${isActive ? 'text-brand-charcoal' : ''}`} />
-              </>
-            )}
-          </NavLink>
-        ))}
-      </div>
-
-      <div className="p-6 border-t border-brand-border">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 bg-brand-gold text-brand-charcoal flex items-center justify-center font-serif text-sm font-bold shadow-sm">
-            {profile?.full_name?.charAt(0) || 'U'}
+    <aside className="w-64 h-screen border-r border-brand-border bg-bg-elevated flex flex-col fixed left-0 top-0 z-40">
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-brand-gold flex items-center justify-center rounded-xl shadow-lg shadow-brand-gold/20">
+            <ShieldCheck className="text-white w-6 h-6" />
           </div>
-          <div className="overflow-hidden">
-            <p className="text-xs font-medium truncate text-text-primary">{profile?.full_name || 'Guest User'}</p>
-            <p className="text-[10px] text-text-muted uppercase tracking-tighter">{profile?.role?.replace('_', ' ') || 'Access'}</p>
+          <div>
+            <h2 className="text-sm font-black uppercase tracking-widest text-text-primary">OpsPortal</h2>
+            <p className="text-[8px] text-text-secondary font-bold uppercase tracking-[0.2em] -mt-1">Dallmayr SA</p>
           </div>
         </div>
 
-        <button 
-          onClick={toggleTheme}
-          className="w-full flex items-center gap-3 px-4 py-2 bg-bg-elevated hover:bg-bg-hover text-text-secondary hover:text-brand-gold text-[10px] uppercase tracking-widest transition-all duration-200 rounded-sm mb-2 shadow-sm border border-brand-border"
-        >
-          {theme === 'light' ? (
-            <><Moon className="w-3 h-3" /> <span>Switch to Dark Protocol</span></>
-          ) : (
-            <><Sun className="w-3 h-3" /> <span>Switch to Light Protocol</span></>
-          )}
-        </button>
-        
-        <button 
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-2 bg-bg-elevated hover:bg-red-600/10 text-text-secondary hover:text-red-500 text-[10px] uppercase tracking-widest transition-all duration-200 rounded-sm border border-brand-border"
-        >
-          <LogOut className="w-3 h-3" />
-          <span>Terminate Session</span>
-        </button>
+        <nav className="space-y-1">
+          {allowedItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => cn(
+                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group',
+                isActive 
+                  ? 'bg-brand-gold text-white shadow-md shadow-brand-gold/10' 
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-base border border-transparent hover:border-brand-border'
+              )}
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon className={cn('w-4 h-4', isActive ? 'text-white' : 'text-text-secondary group-hover:text-brand-gold')} />
+                  <span>{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
       </div>
-    </div>
+
+      <div className="mt-auto p-6 space-y-4">
+        {/* User Profile */}
+        <div className="p-4 bg-bg-base border border-brand-border rounded-2xl flex items-center gap-3 shadow-sm">
+          <div className="w-8 h-8 rounded-full bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[10px] font-black text-brand-gold">{(profile?.full_name || 'U').charAt(0)}</span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black text-text-primary truncate">{profile?.full_name || 'Unknown'}</p>
+            <p className="text-[8px] font-bold text-brand-gold uppercase tracking-widest">{role || 'Standard'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between px-2">
+          <button 
+            onClick={toggleTheme}
+            className="p-2 text-text-secondary hover:text-brand-gold transition-colors"
+          >
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
+          <button 
+            onClick={() => supabase.auth.signOut()}
+            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-red-500 transition-colors"
+          >
+            <LogOut size={14} />
+            <span>Terminate</span>
+          </button>
+        </div>
+      </div>
+    </aside>
   );
 };

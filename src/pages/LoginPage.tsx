@@ -1,87 +1,95 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
-import { Card, Button, Input } from '../components/ui/Base';
+import { Card, Input, Button } from '../components/ui/Base';
+import { ShieldCheck, Lock, Mail, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const LoginPage: React.FC = () => {
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      navigate('/dashboard');
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              full_name: email.split('@')[0], // Fallback name from email
+            }
+          }
+        });
+        if (error) throw error;
+        toast.success('Registration successful. Verify your email.');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success('Access Granted');
+      }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-base p-6 transition-colors duration-300">
-      <div className="absolute inset-0 z-0 opacity-10 flex items-center justify-center pointer-events-none">
-        <h1 className="text-[20vw] font-serif font-bold text-text-primary tracking-widest italic uppercase">DALLMAYR</h1>
-      </div>
-
-      <Card className="z-10 w-full max-w-md p-10 border-brand-gold/20 bg-bg-elevated shadow-2xl relative">
-        <div className="absolute top-0 left-0 w-full h-1 bg-brand-gold"></div>
-        <div className="text-center mb-8">
-          <h2 className="text-3xl text-brand-gold mb-2 tracking-tight italic">Operations Portal</h2>
-          <p className="text-[10px] text-text-secondary uppercase tracking-[0.4em] font-medium font-sans">Corporate Identity Verification</p>
+    <div className="min-h-screen bg-bg-base flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-brand-gold/10 via-transparent to-transparent opacity-50" />
+      
+      <div className="w-full max-w-md relative">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-gold rounded-2xl shadow-2xl shadow-brand-gold/30 mb-6">
+            <ShieldCheck className="text-white w-10 h-10" />
+          </div>
+          <h1 className="text-3xl font-black uppercase tracking-widest text-text-primary">OpsPortal</h1>
+          <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.3em] mt-1 italic">Enterprise Tactical Gateway</p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l border-red-500 text-red-600 text-xs shadow-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-4">
-            <Input
-              label="Corporate Email"
+        <Card className="p-8 shadow-2xl bg-bg-elevated/40 backdrop-blur-xl border-brand-border">
+          <form onSubmit={handleAuth} className="space-y-6">
+            <Input 
+              label="Personnel Email" 
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@dallmayr.co.za"
+              onChange={e => setEmail(e.target.value)}
+              placeholder="agent@dallmayr.io"
               required
-              className="bg-white border-brand-border text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-gold"
             />
-            <Input
-              label="Security Protocol Password"
+            
+            <Input 
+              label="Security Cipher" 
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="bg-white border-brand-border text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-gold"
             />
+
+            <Button type="submit" isLoading={loading} className="w-full py-4 uppercase tracking-[0.2em] font-black">
+              {isSignUp ? 'Register Entity' : 'Establish Uplink'}
+            </Button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-brand-border text-center">
+            <button 
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-brand-gold transition-colors"
+            >
+              {isSignUp ? 'Already registered? Authenticate' : 'New Tactical Unit? Register'}
+            </button>
           </div>
+        </Card>
 
-          <Button 
-            type="submit" 
-            className="w-full h-12 uppercase tracking-[0.2em] font-bold text-[11px] shadow-[0_10px_20px_rgba(212,175,55,0.15)]" 
-            isLoading={loading}
-          >
-            Authenticate Access
-          </Button>
-        </form>
-
-        <div className="mt-10 pt-6 border-t border-brand-border text-center">
-          <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">
-            Proprietary Enterprise Software © 2024 Dallmayr International
-          </p>
-        </div>
-      </Card>
+        <p className="mt-8 text-center text-[8px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-50">
+          Secure Session Monitoring Active. Unauthorized Access is Prohibited.
+        </p>
+      </div>
     </div>
   );
 };

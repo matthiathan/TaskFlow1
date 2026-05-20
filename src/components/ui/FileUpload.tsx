@@ -1,94 +1,142 @@
-import React, { useState } from 'react';
-import { UploadCloud, X, File, Image as ImageIcon, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { Upload, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { toast } from 'sonner';
 
 interface FileUploadProps {
-  bucket: string;
-  folderPath: string;
   onUploadComplete: (url: string) => void;
-  accept?: string;
-  maxSizeMB?: number;
+  onFileRemoved: (url: string) => void;
+  maxFiles?: number;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({ 
-  bucket, 
-  folderPath, 
-  onUploadComplete,
-  accept = "image/*,application/pdf",
-  maxSizeMB = 5
+  onUploadComplete, 
+  onFileRemoved,
+  maxFiles = 5 
 }) => {
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [files, setFiles] = useState<{ name: string; url: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
-    if (file.size > maxSizeMB * 1024 * 1024) {
-      setError(`File exceeds ${maxSizeMB}MB limit.`);
+    if (files.length + selectedFiles.length > maxFiles) {
+      toast.error(`Maximum ${maxFiles} files permitted.`);
       return;
     }
 
-    try {
-      setIsUploading(true);
-      setError(null);
+    setUploading(true);
 
-      // Generate unique secure filename
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `${folderPath}/${fileName}`;
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
 
-      // Push to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+      try {
+        const { data, error } = await supabase.storage
+          .from('tickets')
+          .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+        if (error) throw error;
 
-      // Retrieve public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage
+          .from('tickets')
+          .getPublicUrl(data.path);
 
-      onUploadComplete(publicUrl);
+        const newFile = { name: file.name, url: publicUrl };
+        setFiles(prev => [...prev, newFile]);
+        onUploadComplete(publicUrl);
+        toast.success(`${file.name} uploaded`);
+      } catch (err: any) {
+        toast.error(`Upload error: ${err.message}`);
+      }
+    }
+
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeFile = async (url: string) => {
+    // Delete from state immediately
+    const fileToRemove = files.find(f => f.url === url);
+    setFiles(prev => prev.filter(f => f.url !== url));
+    
+    // Notify parent to remove from form state
+    onFileRemoved(url);
+
+    // Prompt logic: "if a user uploads a file but clicks an 'X' to remove it from the form... 
+    // the system must execute an API call to permanently delete the orphaned file from the cloud bucket"
+    try {
+      const parts = url.split('/');
+      const fileName = parts[parts.length - 1];
+      
+      const { error } = await supabase.storage
+        .from('tickets')
+        .remove([fileName]);
+
+      if (error) throw error;
+      toast.info(`Orphaned archive ${fileToRemove?.name} purged from storage`);
     } catch (err: any) {
-      setError(`Upload Failed: ${err.message}`);
-    } finally {
-      setIsUploading(false);
+      console.error('Purge error:', err);
     }
   };
 
   return (
-    <div className="w-full">
-      <div className="relative border-2 border-dashed border-brand-border bg-bg-surface hover:bg-bg-elevated transition-colors rounded-sm p-6 flex flex-col items-center justify-center text-center">
-        <input 
-          type="file" 
-          accept={accept}
-          onChange={handleUpload}
-          disabled={isUploading}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-        />
-        
-        {isUploading ? (
-          <div className="flex flex-col items-center text-brand-gold">
-            <Loader2 size={24} className="animate-spin mb-2" />
-            <span className="text-[10px] uppercase tracking-widest font-bold">Encrypting & Transmitting...</span>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center text-text-muted hover:text-brand-gold transition-colors">
-            <UploadCloud size={24} className="mb-2" />
-            <span className="text-[10px] uppercase tracking-widest font-bold text-text-primary">
-              Initialize Upload
-            </span>
-            <span className="text-[9px] mt-1">Images & PDFs up to {maxSizeMB}MB</span>
-          </div>
+    <div className="space-y-4">
+      <div 
+        onClick={() => fileInputRef.current?.click()}
+        className={cn(
+          "border-2 border-dashed border-brand-border rounded-xl p-8 transition-all cursor-pointer hover:border-brand-gold/50 flex flex-col items-center justify-center gap-3 bg-bg-elevated/30",
+          uploading && "opacity-50 pointer-events-none"
         )}
+      >
+        {uploading ? (
+          <Loader2 className="w-8 h-8 text-brand-gold animate-spin" />
+        ) : (
+          <Upload className="w-8 h-8 text-text-secondary" />
+        )}
+        <div className="text-center">
+          <p className="text-sm font-bold text-text-primary uppercase tracking-wider">Deploy Archives</p>
+          <p className="text-[10px] text-text-secondary font-medium mt-1">Images or PDFs (Max {maxFiles} files)</p>
+        </div>
+        <input 
+          ref={fileInputRef}
+          type="file" 
+          className="hidden" 
+          multiple 
+          accept="image/*,application/pdf"
+          onChange={handleUpload}
+        />
       </div>
-      
-      {error && (
-        <p className="text-[10px] text-red-500 uppercase tracking-wider font-bold mt-2 flex items-center gap-1">
-          <X size={12} /> {error}
-        </p>
+
+      {files.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {files.map((file, idx) => (
+            <div key={idx} className="flex items-center gap-3 p-3 bg-bg-base border border-brand-border rounded-lg group">
+              <div className="w-8 h-8 bg-brand-gold/10 flex items-center justify-center rounded">
+                {file.name.endsWith('.pdf') ? (
+                  <FileText className="w-4 h-4 text-brand-gold" />
+                ) : (
+                  <ImageIcon className="w-4 h-4 text-brand-gold" />
+                )}
+              </div>
+              <span className="text-[10px] font-bold text-text-primary truncate flex-grow uppercase tracking-tight">
+                {file.name}
+              </span>
+              <button 
+                type="button"
+                onClick={() => removeFile(file.url)}
+                className="p-1.5 text-text-secondary hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

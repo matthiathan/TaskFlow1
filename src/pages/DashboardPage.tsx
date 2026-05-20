@@ -1,113 +1,179 @@
 import React from 'react';
+import { useTasks } from '../hooks/useTasks';
 import { Card } from '../components/ui/Base';
-import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Settings, ShieldCheck, MessageSquare, TrendingUp, Clock } from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie
+} from 'recharts';
+import { 
+  Activity, 
+  CheckCircle2, 
+  Clock, 
+  AlertTriangle,
+  Zap,
+  ShieldCheck,
+  TrendingUp
+} from 'lucide-react';
+import { cn } from '../lib/utils';
 
 export const DashboardPage: React.FC = () => {
-  const { profile } = useAuth();
+  const { tasks, loading } = useTasks();
 
   const stats = [
-    { label: 'Pending Service Calls', value: '14', icon: Settings, color: 'text-brand-gold shadow-sm' },
-    { label: 'Active Tasks', value: '28', icon: ClipboardList, color: 'text-blue-500 shadow-sm' },
-    { label: 'Verifications (24h)', value: '142', icon: ShieldCheck, color: 'text-green-500 shadow-sm' },
-    { label: 'Unread Comms', value: '03', icon: MessageSquare, color: 'text-brand-gold shadow-sm' },
+    { label: 'System Directives', value: tasks.length, icon: Activity, color: 'text-brand-gold' },
+    { label: 'Active Operations', value: tasks.filter(t => t.status === 'in_progress').length, icon: Zap, color: 'text-blue-500' },
+    { label: 'Resolved Goals', value: tasks.filter(t => t.status === 'resolved').length, icon: CheckCircle2, color: 'text-green-500' },
+    { label: 'Pending Response', value: tasks.filter(t => t.status === 'pending').length, icon: Clock, color: 'text-neutral-500' },
+  ];
+
+  const priorityData = [
+    { name: 'High', value: tasks.filter(t => t.priority === 'high').length, color: '#ef4444' },
+    { name: 'Medium', value: tasks.filter(t => t.priority === 'medium').length, color: '#c5a059' },
+    { name: 'Low', value: tasks.filter(t => t.priority === 'low').length, color: '#22c55e' },
+  ].filter(d => d.value > 0);
+
+  const statusData = [
+    { name: 'Pending', count: tasks.filter(t => t.status === 'pending').length },
+    { name: 'Active', count: tasks.filter(t => t.status === 'in_progress').length },
+    { name: 'Resolved', count: tasks.filter(t => t.status === 'resolved').length },
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <h1 className="text-4xl text-text-primary tracking-tight uppercase mb-1">Command Overview</h1>
-          <p className="text-text-secondary font-serif italic">Operational Control Center | Welcome back, {profile?.full_name}</p>
-        </div>
-        <div className="flex items-center gap-4 text-[10px] uppercase tracking-widest text-text-secondary font-medium">
-          <Clock className="w-3 h-3 text-brand-gold" />
-          <span>Session Start: {new Date().toLocaleTimeString()}</span>
-        </div>
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Ops Intelligence</h1>
+        <p className="text-text-secondary text-sm mt-1">Real-time telemetry and operational throughput analysis.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, i) => (
-          <Card key={i} className="p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-text-secondary font-bold mb-1">{stat.label}</p>
-                <h3 className="text-3xl font-serif text-text-primary">{stat.value}</h3>
-              </div>
-              <div className={`p-2 bg-bg-surface rounded-sm shadow-sm ${stat.color}`}>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {stats.map((stat, idx) => (
+          <Card key={idx} className="p-6 bg-bg-elevated/40 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-4">
+              <div className={cn("p-2 rounded-lg bg-bg-base border border-brand-border", stat.color)}>
                 <stat.icon className="w-5 h-5" />
               </div>
+              <div className="text-[10px] font-black text-text-secondary uppercase tracking-widest flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-green-500" />
+                Live Feed
+              </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-brand-border flex items-center gap-2 text-[10px] text-green-600 font-medium">
-              <TrendingUp className="w-3 h-3" />
-              <span>+12% from previous cycle</span>
-            </div>
+            <p className="text-3xl font-black text-text-primary tracking-tighter">{stat.value}</p>
+            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-1">{stat.label}</p>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-0 overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-brand-border flex items-center justify-between bg-brand-charcoal/5">
-            <h3 className="text-lg uppercase tracking-tight font-serif text-text-primary">Critical Active ERP Requests</h3>
-            <button className="text-[10px] uppercase tracking-widest text-brand-gold font-bold hover:underline">Vew Registry</button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Chart */}
+        <Card className="lg:col-span-2 p-8">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-primary">Operational Distribution</h3>
+            <div className="flex items-center gap-4">
+              {['Pending', 'Active', 'Resolved'].map((label, i) => (
+                <div key={label} className="flex items-center gap-2">
+                  <div className={cn("w-1.5 h-1.5 rounded-full", i === 0 ? "bg-neutral-500" : i === 1 ? "bg-brand-gold" : "bg-green-500")} />
+                  <span className="text-[8px] font-bold text-text-secondary uppercase">{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="enterprise-table">
-              <thead>
-                <tr>
-                  <th>Task No.</th>
-                  <th>QR Sequence</th>
-                  <th>Client/Location</th>
-                  <th>Complexity</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3, 4, 5].map(i => (
-                  <tr key={i}>
-                    <td className="font-mono text-xs text-text-primary font-bold">ERP-9482{i}</td>
-                    <td className="text-text-secondary">DZA-S-00{i}</td>
-                    <td>Johannesburg Central</td>
-                    <td>
-                      <span className={`text-[10px] font-bold uppercase ${i % 2 === 0 ? 'text-red-500' : 'text-amber-500'}`}>
-                        {i % 2 === 0 ? 'Urgent' : 'Routine'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="inline-flex items-center gap-2 px-2 py-1 bg-brand-gold-muted rounded-full text-[9px] font-bold text-brand-gold uppercase tracking-tighter">
-                        <div className="w-1 h-1 bg-brand-gold rounded-full animate-pulse shadow-sm"></div>
-                        In Progress
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="h-[300px] w-full min-h-[300px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+              <BarChart data={statusData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" opacity={0.1} />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#666' }} 
+                  dy={10}
+                />
+                <YAxis hide />
+                <Tooltip 
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{ 
+                    backgroundColor: '#1a1a1a', 
+                    border: '1px solid #262626',
+                    borderRadius: '8px',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    color: '#fff'
+                  }}
+                />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={40}>
+                  {statusData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={index === 0 ? '#666' : index === 1 ? '#c5a059' : '#22c55e'} 
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </Card>
 
-        <Card className="p-0 overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-brand-border bg-brand-charcoal/5 text-text-primary">
-            <h3 className="text-lg uppercase tracking-tight font-serif">Internal Dispatch Feed</h3>
-          </div>
-          <div className="p-6 space-y-6">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="flex gap-4 group cursor-pointer">
-                <div className="flex-shrink-0 w-10 h-10 bg-bg-surface border border-brand-border flex items-center justify-center font-serif text-text-primary group-hover:bg-brand-gold group-hover:text-brand-charcoal transition-all duration-300 shadow-sm">
-                  MT
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-text-primary">Mark Thompson <span className="ml-2 text-[10px] font-normal text-text-secondary tracking-tighter">24m ago</span></p>
-                  <p className="text-xs text-text-secondary line-clamp-2 mt-1 italic">Status update on Job ERP-9482. Parts arrived at Cape Town warehouse. Commencing install tomorrow morning.</p>
-                </div>
+        {/* Side Component */}
+        <div className="space-y-8">
+          <Card className="p-8">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-primary mb-6">Threat Mitigation</h3>
+            <div className="h-[200px] w-full relative min-h-[200px]">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <PieChart>
+                  <Pie
+                    data={priorityData}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={8}
+                    dataKey="value"
+                  >
+                    {priorityData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <ShieldCheck className="w-6 h-6 text-brand-gold mb-1" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Secured</span>
               </div>
-            ))}
-          </div>
-          <div className="p-4 bg-bg-surface border-t border-brand-border">
-            <button className="w-full py-2 text-[10px] uppercase font-bold text-text-muted hover:text-brand-gold tracking-widest transition-colors">Load Archive</button>
-          </div>
-        </Card>
+            </div>
+            <div className="mt-4 space-y-3">
+              {priorityData.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-[10px] font-bold text-text-secondary uppercase">{item.name} Priority</span>
+                  </div>
+                  <span className="text-[10px] font-black text-text-primary">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-brand-gold text-white overflow-hidden relative">
+            <div className="relative z-10">
+              <Activity className="w-8 h-8 mb-4 opacity-50" />
+              <h4 className="text-sm font-black uppercase tracking-widest mb-1">System Status: Optimal</h4>
+              <p className="text-[10px] font-medium opacity-80 leading-relaxed uppercase tracking-tight">
+                All secure uplinks are operational. Latency detected within expected parameters.
+              </p>
+            </div>
+            <div className="absolute -right-4 -bottom-4 opacity-10">
+              <ShieldCheck size={120} />
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );

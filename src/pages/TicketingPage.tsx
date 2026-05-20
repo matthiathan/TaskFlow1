@@ -1,38 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTickets } from '../hooks/useTickets';
 import { Card, Input, Textarea, Button } from '../components/ui/Base';
 import { FileUpload } from '../components/ui/FileUpload';
-import { ShieldCheck, ClipboardList, AlertTriangle, FileSearch, Trash2 } from 'lucide-react';
-import { TaskPriority } from '../types/database';
+import { 
+  ClipboardList, 
+  Search, 
+  Plus, 
+  Settings2, 
+  Cpu, 
+  Hash, 
+  QrCode, 
+  Clock, 
+  X,
+  LayoutGrid,
+  History
+} from 'lucide-react';
+import { TaskPriority, Ticket } from '../types/database';
+import { TicketKanban } from '../components/reporting/TicketKanban';
 import { toast } from 'sonner';
+import { cn } from '../lib/utils';
 
 export const TicketingPage: React.FC = () => {
-  const { loading, submitTicket } = useTickets();
+  const { tickets, loading, fetchTickets, submitTicket, updateTicketStatus } = useTickets();
+  const [showNewReport, setShowNewReport] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
+    issue_description: '',
     priority: 'medium' as TaskPriority,
-    attachment_urls: [] as string[]
+    qr_code: '',
+    serial_number: '',
+    occurrence_time: new Date().toISOString().slice(0, 16),
+    machine_images: [] as string[]
   });
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
 
   const handleUpload = (url: string) => {
     setFormData(prev => ({ 
       ...prev, 
-      attachment_urls: [...prev.attachment_urls, url] 
+      machine_images: [...prev.machine_images, url] 
     }));
   };
 
   const handleFileRemoved = (url: string) => {
     setFormData(prev => ({ 
       ...prev, 
-      attachment_urls: prev.attachment_urls.filter(u => u !== url) 
+      machine_images: prev.machine_images.filter(u => u !== url) 
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.description) {
-      toast.error('Title and description are mandatory.');
+    if (!formData.title || !formData.issue_description || !formData.serial_number) {
+      toast.error('Mission parameters incomplete. S/N, Title, and Description are required.');
       return;
     }
 
@@ -40,73 +63,157 @@ export const TicketingPage: React.FC = () => {
       await submitTicket(formData);
       setFormData({
         title: '',
-        description: '',
+        issue_description: '',
         priority: 'medium',
-        attachment_urls: []
+        qr_code: '',
+        serial_number: '',
+        occurrence_time: new Date().toISOString().slice(0, 16),
+        machine_images: []
       });
-      // Force reload UI state or navigate if needed
+      setShowNewReport(false);
+      fetchTickets();
     } catch (err) {
-      // Handled in hook
+      // Error handled in hook
     }
   };
 
+  const filteredTickets = tickets.filter(t => 
+    t.serial_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.qr_code?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Event Reporting</h1>
-        <p className="text-text-secondary text-sm mt-1">Submit high-priority operational anomalies via secure uplink.</p>
+    <div className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      {/* Header & Controls */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Operational Intelligence</h1>
+          <p className="text-text-secondary text-sm mt-1">Real-time machine incident tracking and field diagnostic hub.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+            <input 
+              type="text"
+              placeholder="Search S/N, QR, or Title..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-bg-elevated border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-brand-gold transition-all"
+            />
+          </div>
+          <Button 
+            onClick={() => setShowNewReport(true)}
+            className="px-6 h-11 uppercase font-black text-[10px] tracking-[0.2em]"
+          >
+            <Plus className="w-4 h-4" />
+            Log New Incident
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <Card className="p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <Input 
-                  label="Core Subject"
-                  value={formData.title}
-                  onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
-                  placeholder="e.g., HVAC failure in Sector 7G..."
-                  required
-                />
+      {/* Main Kanban Content */}
+      <div className="min-h-[600px]">
+        {loading && tickets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-[400px] gap-4">
+            <Settings2 className="w-12 h-12 text-brand-gold animate-spin" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary">Syncing Intel Grid...</p>
+          </div>
+        ) : (
+          <TicketKanban tickets={filteredTickets} onUpdateStatus={updateTicketStatus} />
+        )}
+      </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
-                      Technical Manifesto
-                    </label>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
-                      <ShieldCheck className="w-2.5 h-2.5 text-brand-gold" />
-                      <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">AES-256 Enabled</span>
-                    </div>
-                  </div>
-                  <Textarea 
-                    value={formData.description}
-                    onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                    placeholder="Provide sensitive technical diagnostics and operational context..."
-                    className="min-h-[150px]"
+      {/* New Incident Modal */}
+      {showNewReport && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-2xl bg-bg-elevated border border-brand-border rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+            <div className="p-6 border-b border-brand-border flex items-center justify-between bg-bg-base/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-brand-gold/10 rounded-xl">
+                  <ClipboardList className="w-5 h-5 text-brand-gold" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-text-primary">Incident Declaration</h3>
+                  <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest">Protocol 4-A: Hardware Anomaly Logging</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowNewReport(false)}
+                className="p-2 hover:bg-neutral-500/10 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5 text-text-secondary" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[75vh] scrollbar-thin">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Identification */}
+                <div className="space-y-4">
+                  <Input 
+                    label="Machine S/N"
+                    icon={<Hash className="w-4 h-4" />}
+                    value={formData.serial_number}
+                    onChange={e => setFormData(p => ({ ...p, serial_number: e.target.value }))}
+                    placeholder="e.g. DAL-8829-X"
                     required
                   />
-                  <p className="text-[9px] text-text-secondary italic">This field will be encrypted locally before transmission.</p>
+                  <Input 
+                    label="Identification QR"
+                    icon={<QrCode className="w-4 h-4" />}
+                    value={formData.qr_code}
+                    onChange={e => setFormData(p => ({ ...p, qr_code: e.target.value }))}
+                    placeholder="Scan or enter code..."
+                  />
+                  <Input 
+                    label="Occurrence Time"
+                    icon={<Clock className="w-4 h-4" />}
+                    type="datetime-local"
+                    value={formData.occurrence_time}
+                    onChange={e => setFormData(p => ({ ...p, occurrence_time: e.target.value }))}
+                  />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Classification */}
+                <div className="space-y-4">
+                  <Input 
+                    label="Subject Title"
+                    icon={<Settings2 className="w-4 h-4" />}
+                    value={formData.title}
+                    onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
+                    placeholder="Brief summary..."
+                    required
+                  />
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Impact Assessment</label>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Severity Grading</label>
                     <select 
-                      className="w-full bg-bg-base border border-brand-border rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-brand-gold input-recessed"
+                      className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-gold transition-all"
                       value={formData.priority}
                       onChange={e => setFormData(p => ({ ...p, priority: e.target.value as TaskPriority }))}
                     >
-                      <option value="low">Low Impact</option>
-                      <option value="medium">Standard Operational</option>
-                      <option value="high">Mission Critical</option>
+                      <option value="low">Category III - Maintenance</option>
+                      <option value="medium">Category II - Operational</option>
+                      <option value="high">Category I - Mission Critical</option>
                     </select>
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Diagnostic Narrative</label>
+                  <Textarea 
+                    value={formData.issue_description}
+                    onChange={e => setFormData(p => ({ ...p, issue_description: e.target.value }))}
+                    placeholder="Provide full technical context of the failure..."
+                    className="min-h-[120px]"
+                    required
+                  />
+                </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Technical Evidence</label>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Visual Evidence</label>
                   <FileUpload 
                     onUploadComplete={handleUpload}
                     onFileRemoved={handleFileRemoved}
@@ -114,60 +221,42 @@ export const TicketingPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-4">
+              <div className="mt-8 flex gap-3">
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={() => setShowNewReport(false)}
+                  className="flex-grow py-4"
+                >
+                  Abort
+                </Button>
                 <Button 
                   type="submit" 
                   isLoading={loading} 
-                  className="w-full py-4 text-sm font-black uppercase tracking-[0.2em] gap-3"
+                  className="flex-[2] py-4 uppercase font-black tracking-[0.2em]"
                 >
-                  <ClipboardList className="w-4 h-4" />
-                  Transmit Encrypted Report
+                  Transmit Report
                 </Button>
               </div>
             </form>
-          </Card>
+          </div>
         </div>
+      )}
 
-        <div className="space-y-6">
-          <Card className="p-6 bg-brand-charcoal text-white border-none shadow-xl">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-brand-gold mb-4 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4" /> Security Protocol
-            </h3>
-            <ul className="space-y-4">
-              <li className="flex gap-3">
-                <div className="mt-1"><AlertTriangle className="w-3 h-3 text-brand-gold" /></div>
-                <p className="text-[10px] leading-relaxed text-neutral-400">
-                  <strong className="text-white block mb-0.5">End-to-End Encryption</strong>
-                  Technical manifest descriptions are encrypted client-side using AES-256 standard before entering the database.
-                </p>
-              </li>
-              <li className="flex gap-3">
-                <div className="mt-1"><FileSearch className="w-3 h-3 text-brand-gold" /></div>
-                <p className="text-[10px] leading-relaxed text-neutral-400">
-                  <strong className="text-white block mb-0.5">Automated Purging</strong>
-                  Orphaned files are automatically deleted from cloud clusters if removed from the reporting form.
-                </p>
-              </li>
-            </ul>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-primary mb-4">Submission Stats</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-tight">
-                <span className="text-text-secondary">Queued Artifacts</span>
-                <span className="text-brand-gold">{formData.attachment_urls.length}</span>
-              </div>
-              <div className="w-full bg-bg-elevated h-1 rounded-full overflow-hidden">
-                <div 
-                  className="bg-brand-gold h-full transition-all duration-300"
-                  style={{ width: `${(formData.attachment_urls.length / 5) * 100}%` }}
-                />
-              </div>
-              <p className="text-[9px] text-text-secondary italic">Limit of 5 artifacts per transmission protocol.</p>
-            </div>
-          </Card>
-        </div>
+      {/* Protocol Summary */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-brand-border pt-8">
+         <div className="flex items-center gap-3 grayscale opacity-50">
+            <LayoutGrid className="w-4 h-4 text-brand-gold" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">Kanban View</span>
+         </div>
+         <div className="flex items-center gap-3 grayscale opacity-50">
+            <History className="w-4 h-4 text-brand-gold" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">30-Day Archive</span>
+         </div>
+         <div className="flex items-center gap-3 grayscale opacity-50">
+            <Cpu className="w-4 h-4 text-brand-gold" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">Asset Sync ACTIVE</span>
+         </div>
       </div>
     </div>
   );

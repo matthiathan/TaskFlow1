@@ -1,29 +1,11 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Ticket, TaskPriority } from '../types/database';
+import { Ticket, TaskPriority, TicketStatus } from '../types/database';
 import { toast } from 'sonner';
-import CryptoJS from 'crypto-js';
-
-// In a real production app, this would be injected via secure ENV or user-provided key.
-// Here we use a system-level key for demonstration of the client-side encryption principle.
-const ENCRYPTION_KEY = import.meta.env.VITE_TICKET_SECRET || 'dallmayr-secure-uplink-256';
 
 export const useTickets = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const encrypt = (text: string) => {
-    return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
-  };
-
-  const decrypt = (ciphertext: string) => {
-    try {
-      const bytes = CryptoJS.AES.decrypt(ciphertext, ENCRYPTION_KEY);
-      return bytes.toString(CryptoJS.enc.Utf8);
-    } catch {
-      return '[DECRYPTION ERROR: KEY MISMATCH]';
-    }
-  };
 
   const fetchTickets = useCallback(async () => {
     try {
@@ -44,35 +26,53 @@ export const useTickets = () => {
 
   const submitTicket = async (ticket: {
     title: string;
-    description: string;
+    issue_description: string;
     priority: TaskPriority;
-    attachment_urls: string[];
+    qr_code?: string;
+    serial_number?: string;
+    occurrence_time?: string;
+    machine_images?: string[];
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Auth protocol required');
 
-      const encryptedDescription = encrypt(ticket.description);
-
       const { data, error } = await supabase
         .from('tickets')
         .insert([{
           title: ticket.title,
-          description_encrypted: encryptedDescription,
+          issue_description: ticket.issue_description,
           priority: ticket.priority,
-          status: 'open',
-          attachment_urls: ticket.attachment_urls,
+          status: 'awaiting_tech',
+          qr_code: ticket.qr_code || null,
+          serial_number: ticket.serial_number || null,
+          occurrence_time: ticket.occurrence_time || null,
+          machine_images: ticket.machine_images || [],
           user_id: user.id
         }])
         .select()
         .single();
 
       if (error) throw error;
-      toast.success('Manifest Encrypted & Transmitted');
+      toast.success('Incident Logged & Synchronized');
       return data;
     } catch (err: any) {
       toast.error(`Uplink Failed: ${err.message}`);
       throw err;
+    }
+  };
+
+  const updateTicketStatus = async (id: string, status: TicketStatus) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ status })
+        .eq('id', id);
+
+      if (error) throw error;
+      setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+    } catch (err: any) {
+      toast.error(`Update Failed: ${err.message}`);
     }
   };
 
@@ -100,7 +100,7 @@ export const useTickets = () => {
     loading, 
     fetchTickets, 
     submitTicket, 
-    deleteAttachment,
-    decrypt 
+    updateTicketStatus,
+    deleteAttachment
   };
 };

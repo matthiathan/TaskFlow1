@@ -3,16 +3,29 @@ import { supabase } from '../lib/supabase';
 import { Message, Profile } from '../types/database';
 import { toast } from 'sonner';
 
-export const useMessages = () => {
+export const useMessages = (recipientId?: string | null) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
 
   const fetchMessages = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      let query = supabase
         .from('messages')
-        .select('*, sender_profile:profiles(*)')
+        .select('*, sender_profile:profiles!sender_id(*)');
+
+      if (recipientId) {
+        // Direct messages between current user and selection
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          query = query.or(`and(sender_id.eq.${user.id},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${user.id})`);
+        }
+      } else {
+        // Global / Public messages (recipient_id is NULL)
+        query = query.is('recipient_id', null);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: true })
         .limit(100);
 
@@ -23,17 +36,27 @@ export const useMessages = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [recipientId]);
 
   useEffect(() => {
     fetchMessages();
 
     const channel = supabase
-      .channel('messages_feed')
+      .channel(`messages_${recipientId || 'global'}`)
       .on('postgres_changes' as any, { 
         event: 'INSERT', 
         table: 'messages'
       } as any, async (payload: any) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const isRelevant = !recipientId 
+          ? payload.new.recipient_id === null
+          : (payload.new.sender_id === user.id && payload.new.recipient_id === recipientId) ||
+            (payload.new.sender_id === recipientId && payload.new.recipient_id === user.id);
+
+        if (!isRelevant) return;
+
         // Fetch profile for the new message
         const { data: profile } = await supabase
           .from('profiles')
@@ -44,7 +67,6 @@ export const useMessages = () => {
         const newMessage = { ...payload.new, sender_profile: profile } as Message;
         
         setMessages(prev => {
-          // Check if message already exists (optimistic update might have added it)
           if (prev.some(m => m.id === newMessage.id)) return prev;
           return [...prev, newMessage];
         });
@@ -54,7 +76,7 @@ export const useMessages = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchMessages]);
+  }, [fetchMessages, recipientId]);
 
   const sendMessage = async (content: string) => {
     const tempId = crypto.randomUUID();
@@ -69,6 +91,7 @@ export const useMessages = () => {
         created_at: new Date().toISOString(),
         content,
         sender_id: user.id,
+        recipient_id: recipientId || null,
       };
       
       setMessages(prev => [...prev, optimisticMessage]);
@@ -78,7 +101,8 @@ export const useMessages = () => {
         .insert([{
           id: tempId,
           content,
-          sender_id: user.id
+          sender_id: user.id,
+          recipient_id: recipientId || null
         }]);
 
       if (error) throw error;

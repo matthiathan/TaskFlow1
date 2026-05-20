@@ -28,17 +28,33 @@ export interface Message {
   created_at: string;
   content: string;
   sender_id: string;
+  recipient_id: string | null;
   sender_profile?: Profile;
 }
+
+export interface Conversation {
+  id: string;
+  user_a: string;
+  user_b: string;
+  last_message_at: string;
+  is_deleted_a: boolean;
+  is_deleted_b: boolean;
+  participant?: Profile;
+}
+
+export type TicketStatus = 'awaiting_tech' | 'diagnostic' | 'repaired' | 'closed';
 
 export interface Ticket {
   id: string;
   created_at: string;
   title: string;
-  description_encrypted: string;
-  status: 'open' | 'in_review' | 'resolved' | 'closed';
+  issue_description: string;
+  status: TicketStatus;
   priority: TaskPriority;
-  attachment_urls: string[];
+  qr_code: string | null;
+  serial_number: string | null;
+  occurrence_time: string | null;
+  machine_images: string[];
   user_id: string;
 }
 

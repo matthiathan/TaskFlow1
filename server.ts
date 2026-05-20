@@ -8,18 +8,8 @@ import crypto from "crypto";
 
 dotenv.config();
 
-const app = express();
 const PORT = 3000;
-
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
-})); 
-app.use(express.json());
-
-// --- HEALTH CHECK ---
-app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+const app = express();
 
 // Initialize Supabase Admin Client (Service Role)
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
@@ -61,7 +51,6 @@ const adminAuth = async (req: any, res: any, next: any) => {
 
   try {
     const token = authHeader.replace('Bearer ', '');
-    // We check the role of the user associated with this token via Supabase
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
     
     if (error || !user) throw new Error("Invalid token");
@@ -111,9 +100,30 @@ const externalAuth = async (req: any, res: any, next: any) => {
   }
 };
 
-// --- API KEY MANAGEMENT ---
+// --- VITE MIDDLEWARE & SERVER START ---
 
-// Get current user's API key
+// Logging Middleware
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api')) {
+    console.log(`[API REQUEST] ${new Date().toISOString()} ${req.method} ${req.url}`);
+  }
+  next();
+});
+
+// Security & Parsing
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+})); 
+app.use(express.json());
+
+// --- API ROUTES ---
+
+// Health Check
+app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+
+// Auth Key Management
 app.get("/api/api-key", auth, async (req: any, res: any) => {
   try {
     const { data, error } = await supabaseAdmin
@@ -128,12 +138,9 @@ app.get("/api/api-key", auth, async (req: any, res: any) => {
   }
 });
 
-// Generate/Regenerate API key
 app.post("/api/api-key", auth, async (req: any, res: any) => {
   try {
     const newKey = `ops_${crypto.randomUUID().replace(/-/g, '')}`;
-    
-    // Use upsert to handle cases where profile doesn't exist yet
     const { error } = await supabaseAdmin
       .from('profiles')
       .upsert({ 
@@ -150,26 +157,14 @@ app.post("/api/api-key", auth, async (req: any, res: any) => {
   }
 });
 
-// --- EXTERNAL API ENDPOINTS ---
-
-// Expose tasks for external applications
+// External Tasks
 app.get("/api/external/tasks", externalAuth, async (req, res) => {
   try {
     const { data: tasks, error } = await supabaseAdmin
       .from('tasks')
       .select(`
-        id,
-        created_at,
-        title,
-        description,
-        priority,
-        status,
-        due_date,
-        user_id,
-        profiles (
-          full_name,
-          role
-        )
+        id, created_at, title, description, priority, status, due_date, user_id,
+        profiles (full_name, role)
       `)
       .order('created_at', { ascending: false });
 
@@ -180,9 +175,7 @@ app.get("/api/external/tasks", externalAuth, async (req, res) => {
   }
 });
 
-// --- ADMIN API ENDPOINTS ---
-
-// List all users (Auth + Profiles)
+// Admin Endpoints
 app.get("/api/admin/users", adminAuth, async (req, res) => {
   try {
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
@@ -193,34 +186,23 @@ app.get("/api/admin/users", adminAuth, async (req, res) => {
   }
 });
 
-// Create new user
 app.post("/api/admin/users", adminAuth, async (req, res) => {
   const { email, password, full_name, role } = req.body;
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name, role }
+      email, password, email_confirm: true, user_metadata: { full_name, role }
     });
     if (error) throw error;
-
-    // Supabase trigger should handle profile creation, but we can verify/update if needed
     if (role || full_name) {
-      await supabaseAdmin
-        .from('profiles')
-        .update({ full_name, role })
-        .eq('id', user?.id);
+      await supabaseAdmin.from('profiles').update({ full_name, role }).eq('id', user?.id);
     }
-
     res.json({ user });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update user password or metadata
-app.patch("/api/admin/users/:id", adminAuth, async (req, res) => {
+app.patch("/api/admin/users/:id", adminAuth, async (req: any, res: any) => {
   const { id } = req.params;
   const { password, full_name, role } = req.body;
   try {
@@ -235,21 +217,15 @@ app.patch("/api/admin/users/:id", adminAuth, async (req, res) => {
       const pUpdate: any = {};
       if (full_name) pUpdate.full_name = full_name;
       if (role) pUpdate.role = role;
-      
-      await supabaseAdmin
-        .from('profiles')
-        .update(pUpdate)
-        .eq('id', id);
+      await supabaseAdmin.from('profiles').update(pUpdate).eq('id', id);
     }
-
     res.json({ data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Delete user
-app.delete("/api/admin/users/:id", adminAuth, async (req, res) => {
+app.delete("/api/admin/users/:id", adminAuth, async (req: any, res: any) => {
   const { id } = req.params;
   try {
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
@@ -260,7 +236,7 @@ app.delete("/api/admin/users/:id", adminAuth, async (req, res) => {
   }
 });
 
-// --- VITE MIDDLEWARE ---
+// --- VITE MIDDLEWARE & SERVER START ---
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
@@ -278,7 +254,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`[${new Date().toISOString()}] Server listening on port ${PORT}`);
   });
 }
 

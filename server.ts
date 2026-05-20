@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { createClient } from '@supabase/supabase-js';
 import dotenv from "dotenv";
@@ -119,12 +120,13 @@ app.use(cors({
 app.use(express.json());
 
 // --- API ROUTES ---
+const apiRouter = express.Router();
 
 // Health Check
-app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+apiRouter.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
 // Auth Key Management
-app.get("/api/api-key", auth, async (req: any, res: any) => {
+apiRouter.get("/api-key", auth, async (req: any, res: any) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('profiles')
@@ -138,7 +140,7 @@ app.get("/api/api-key", auth, async (req: any, res: any) => {
   }
 });
 
-app.post("/api/api-key", auth, async (req: any, res: any) => {
+apiRouter.post("/api-key", auth, async (req: any, res: any) => {
   try {
     const newKey = `ops_${crypto.randomUUID().replace(/-/g, '')}`;
     const { error } = await supabaseAdmin
@@ -157,8 +159,8 @@ app.post("/api/api-key", auth, async (req: any, res: any) => {
   }
 });
 
-// External Tasks
-app.get("/api/external/tasks", externalAuth, async (req: any, res: any) => {
+// External Tasks (Multiple endpoints for flexibility)
+const handleExternalTasks = async (req: any, res: any) => {
   try {
     const { data: tasks, error } = await supabaseAdmin
       .from('tasks')
@@ -174,10 +176,13 @@ app.get("/api/external/tasks", externalAuth, async (req: any, res: any) => {
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+apiRouter.get("/external/tasks", externalAuth, handleExternalTasks);
+apiRouter.get("/tasks", externalAuth, handleExternalTasks); // Alias for convenience
 
 // Admin Endpoints
-app.get("/api/admin/users", adminAuth, async (req, res) => {
+apiRouter.get("/admin/users", adminAuth, async (req, res) => {
   try {
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
     if (error) throw error;
@@ -187,7 +192,7 @@ app.get("/api/admin/users", adminAuth, async (req, res) => {
   }
 });
 
-app.post("/api/admin/users", adminAuth, async (req, res) => {
+apiRouter.post("/admin/users", adminAuth, async (req, res) => {
   const { email, password, full_name, role } = req.body;
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.admin.createUser({
@@ -203,7 +208,7 @@ app.post("/api/admin/users", adminAuth, async (req, res) => {
   }
 });
 
-app.patch("/api/admin/users/:id", adminAuth, async (req: any, res: any) => {
+apiRouter.patch("/admin/users/:id", adminAuth, async (req: any, res: any) => {
   const { id } = req.params;
   const { password, full_name, role } = req.body;
   try {
@@ -226,7 +231,7 @@ app.patch("/api/admin/users/:id", adminAuth, async (req: any, res: any) => {
   }
 });
 
-app.delete("/api/admin/users/:id", adminAuth, async (req: any, res: any) => {
+apiRouter.delete("/admin/users/:id", adminAuth, async (req: any, res: any) => {
   const { id } = req.params;
   try {
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
@@ -237,20 +242,40 @@ app.delete("/api/admin/users/:id", adminAuth, async (req: any, res: any) => {
   }
 });
 
+// Mount the API Router
+app.use("/api", apiRouter);
+
 // --- VITE MIDDLEWARE & SERVER START ---
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: "spa",
+      appType: "custom",
     });
     app.use(vite.middlewares);
+
+    app.get('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      try {
+        let template = fs.readFileSync(path.resolve(process.cwd(), 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e: any) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.resolve(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Production build index.html not found. Please ensure "npm run build" has been executed.');
+      }
     });
   }
 

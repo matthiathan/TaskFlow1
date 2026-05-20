@@ -45,7 +45,8 @@ export const useMessages = (recipientId?: string | null) => {
       .channel(`messages_${recipientId || 'global'}`)
       .on('postgres_changes' as any, { 
         event: 'INSERT', 
-        table: 'messages'
+        table: 'messages',
+        schema: 'public'
       } as any, async (payload: any) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;

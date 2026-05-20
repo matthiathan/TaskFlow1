@@ -227,5 +227,7 @@ GROUP BY ua, ub
 ON CONFLICT (user_a, user_b) DO UPDATE SET 
     last_message_at = EXCLUDED.last_message_at;
 
--- NOTE: The 30-day cleanup is handled by the application layer filter
--- in the useConversations hook to avoid data loss while keeping the UI clean.
+-- 9. ENABLE REALTIME
+ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;

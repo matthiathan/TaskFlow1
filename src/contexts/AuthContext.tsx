@@ -7,6 +7,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   role: Role | null;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,6 +16,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
 
   useEffect(() => {
     // Check active sessions
@@ -37,6 +42,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
+  // Inactivity Logout (10 minutes)
+  useEffect(() => {
+    if (!user) return;
+
+    let timeout: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        logout();
+      }, 10 * 60 * 1000); // 10 minutes
+    };
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
+    
+    const activityHandler = () => resetTimer();
+
+    events.forEach(event => document.addEventListener(event, activityHandler));
+    resetTimer();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      events.forEach(event => document.removeEventListener(event, activityHandler));
+    };
+  }, [user]);
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -55,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, role: profile?.role || null }}>
+    <AuthContext.Provider value={{ user, profile, loading, role: profile?.role || null, logout }}>
       {children}
     </AuthContext.Provider>
   );

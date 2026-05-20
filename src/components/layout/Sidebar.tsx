@@ -31,7 +31,7 @@ const navItems = [
 
 export const Sidebar: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { theme, toggleTheme } = useTheme();
-  const { profile, role } = useAuth() as any; 
+  const { profile, role, logout } = useAuth(); 
 
   const allowedItems = navItems.filter(item => item.roles.includes(role || 'user'));
 
@@ -96,7 +96,7 @@ export const Sidebar: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
           <button 
-            onClick={() => supabase.auth.signOut()}
+            onClick={logout}
             className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-red-500 transition-colors"
           >
             <LogOut size={14} />

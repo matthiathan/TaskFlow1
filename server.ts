@@ -10,7 +10,6 @@ import crypto from "crypto";
 dotenv.config();
 
 const PORT = 3000;
-const app = express();
 
 // Initialize Supabase Admin Client (Service Role)
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
@@ -101,65 +100,7 @@ const externalAuth = async (req: any, res: any, next: any) => {
   }
 };
 
-// --- VITE MIDDLEWARE & SERVER START ---
-
-// Logging Middleware
-app.use((req, res, next) => {
-  if (req.url.startsWith('/api')) {
-    console.log(`[API REQUEST] ${new Date().toISOString()} ${req.method} ${req.url}`);
-  }
-  next();
-});
-
-// Security & Parsing
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
-})); 
-app.use(express.json());
-
-// --- API ROUTES ---
-const apiRouter = express.Router();
-
-// Health Check
-apiRouter.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
-
-// Auth Key Management
-apiRouter.get("/api-key", auth, async (req: any, res: any) => {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('profiles')
-      .select('api_key')
-      .eq('id', req.user.id)
-      .single();
-    if (error) throw error;
-    res.json({ apiKey: data.api_key });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-apiRouter.post("/api-key", auth, async (req: any, res: any) => {
-  try {
-    const newKey = `ops_${crypto.randomUUID().replace(/-/g, '')}`;
-    const { error } = await supabaseAdmin
-      .from('profiles')
-      .upsert({ 
-        id: req.user.id, 
-        api_key: newKey,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-
-    if (error) throw error;
-    res.json({ apiKey: newKey });
-  } catch (error: any) {
-    console.error('API Key Generation Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// External Tasks (Multiple endpoints for flexibility)
+// External Task Handler
 const handleExternalTasks = async (req: any, res: any) => {
   try {
     const { data: tasks, error } = await supabaseAdmin
@@ -178,76 +119,158 @@ const handleExternalTasks = async (req: any, res: any) => {
   }
 };
 
-apiRouter.get("/external/tasks", externalAuth, handleExternalTasks);
-apiRouter.get("/tasks", externalAuth, handleExternalTasks); // Alias for convenience
-
-// Admin Endpoints
-apiRouter.get("/admin/users", adminAuth, async (req, res) => {
-  try {
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
-    if (error) throw error;
-    res.json({ users });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-apiRouter.post("/admin/users", adminAuth, async (req, res) => {
-  const { email, password, full_name, role } = req.body;
-  try {
-    const { data: { user }, error } = await supabaseAdmin.auth.admin.createUser({
-      email, password, email_confirm: true, user_metadata: { full_name, role }
-    });
-    if (error) throw error;
-    if (role || full_name) {
-      await supabaseAdmin.from('profiles').update({ full_name, role }).eq('id', user?.id);
-    }
-    res.json({ user });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-apiRouter.patch("/admin/users/:id", adminAuth, async (req: any, res: any) => {
-  const { id } = req.params;
-  const { password, full_name, role } = req.body;
-  try {
-    const updateData: any = {};
-    if (password) updateData.password = password;
-    if (full_name || role) updateData.user_metadata = { full_name, role };
-
-    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, updateData);
-    if (error) throw error;
-
-    if (full_name || role) {
-      const pUpdate: any = {};
-      if (full_name) pUpdate.full_name = full_name;
-      if (role) pUpdate.role = role;
-      await supabaseAdmin.from('profiles').update(pUpdate).eq('id', id);
-    }
-    res.json({ data });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-apiRouter.delete("/admin/users/:id", adminAuth, async (req: any, res: any) => {
-  const { id } = req.params;
-  try {
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
-    if (error) throw error;
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Mount the API Router
-app.use("/api", apiRouter);
-
 // --- VITE MIDDLEWARE & SERVER START ---
 
 async function startServer() {
+  const app = express();
+  
+  // High-level Proxy Trust (important for Render/Cloud Run)
+  app.set('trust proxy', 1);
+
+  // Logging Middleware (moved inside startServer to ensure it's on the right app instance)
+  app.use((req, res, next) => {
+    if (req.url.startsWith('/api')) {
+      console.log(`[API DEBUG] ${new Date().toISOString()} ${req.method} ${req.url}`);
+    }
+    next();
+  });
+
+  // Security & Parsing
+  app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+  })); 
+  app.use(express.json());
+
+  // --- API ROUTES ---
+  const apiRouter = express.Router();
+
+  // Health Check
+  apiRouter.get("/health", (req, res) => res.json({ 
+    status: "ok", 
+    version: "2.4.1",
+    env: process.env.NODE_ENV,
+    timestamp: new Date().toISOString() 
+  }));
+
+  // Auth Key Management
+  apiRouter.get("/api-key", auth, async (req: any, res: any) => {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .select('api_key')
+        .eq('id', req.user.id)
+        .single();
+      if (error) throw error;
+      res.json({ apiKey: data.api_key });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  apiRouter.post("/api-key", auth, async (req: any, res: any) => {
+    try {
+      const { customKey } = req.body;
+      const newKey = customKey || `ops_${crypto.randomUUID().replace(/-/g, '')}`;
+      
+      // Upsert into profiles. We only include ID and API_KEY to avoid schema conflicts 
+      // with potentially missing columns like 'email' in the profiles table.
+      const { error } = await supabaseAdmin
+        .from('profiles')
+        .upsert({ 
+          id: req.user.id,
+          api_key: newKey,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      if (error) {
+        console.error('[API ERROR] Key generation upsert failed:', error);
+        throw error;
+      }
+      
+      res.json({ apiKey: newKey });
+    } catch (error: any) {
+      console.error('[API ERROR] Key Generation:', error);
+      res.status(500).json({ error: error.message || 'Internal server error during key generation' });
+    }
+  });
+
+  // External Tasks
+  apiRouter.get("/external/tasks", externalAuth, handleExternalTasks);
+  apiRouter.get("/tasks", externalAuth, handleExternalTasks);
+
+  // Admin Endpoints
+  apiRouter.get("/admin/users", adminAuth, async (req, res) => {
+    try {
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+      if (error) throw error;
+      res.json({ users });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  apiRouter.post("/admin/users", adminAuth, async (req, res) => {
+    const { email, password, full_name, role } = req.body;
+    try {
+      const { data: { user }, error } = await supabaseAdmin.auth.admin.createUser({
+        email, password, email_confirm: true, user_metadata: { full_name, role }
+      });
+      if (error) throw error;
+      if (role || full_name) {
+        await supabaseAdmin.from('profiles').update({ full_name, role }).eq('id', user?.id);
+      }
+      res.json({ user });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  apiRouter.patch("/admin/users/:id", adminAuth, async (req: any, res: any) => {
+    const { id } = req.params;
+    const { password, full_name, role } = req.body;
+    try {
+      const updateData: any = {};
+      if (password) updateData.password = password;
+      if (full_name || role) updateData.user_metadata = { full_name, role };
+
+      const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, updateData);
+      if (error) throw error;
+
+      if (full_name || role) {
+        const pUpdate: any = {};
+        if (full_name) pUpdate.full_name = full_name;
+        if (role) pUpdate.role = role;
+        await supabaseAdmin.from('profiles').update(pUpdate).eq('id', id);
+      }
+      res.json({ data });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  apiRouter.delete("/admin/users/:id", adminAuth, async (req: any, res: any) => {
+    const { id } = req.params;
+    try {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // JSON API 404 Handler - prevents falling through to HTML catch-all for /api routes
+  apiRouter.use((req, res) => {
+    console.warn(`[API 404] No match for: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({ error: `API route not found: ${req.originalUrl}` });
+  });
+
+  // Mount API Router
+  app.use("/api", apiRouter);
+
+  // Asset/SPA Fallbacks
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -274,6 +297,7 @@ async function startServer() {
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
       } else {
+        console.error(`[SPA ERROR] index.html not found at: ${indexPath}`);
         res.status(404).send('Production build index.html not found. Please ensure "npm run build" has been executed.');
       }
     });

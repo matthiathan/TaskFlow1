@@ -12,6 +12,8 @@ export const ApiAccessPage: React.FC = () => {
   const [governing, setGoverning] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const [manualKey, setManualKey] = useState('');
+
   const apiBaseUrl = `${window.location.origin}/api/external/tasks`;
 
   useEffect(() => {
@@ -30,7 +32,8 @@ export const ApiAccessPage: React.FC = () => {
       });
       
       if (response.status === 404) {
-        toast.error('API Server routes not found. Please contact admin.');
+        console.error('API 404 at /api/api-key. Base URL:', window.location.origin);
+        toast.error(`API Server routes not found (404). If you just deployed, wait a moment for Render to finish the build.`);
         return;
       }
 
@@ -44,8 +47,20 @@ export const ApiAccessPage: React.FC = () => {
     }
   };
 
-  const generateKey = async () => {
-    if (!confirm('Generating a new key will immediately invalidate your existing key. This will break any current external integrations. Proceed?')) return;
+  const handleKeyUpdate = async () => {
+    let customKey: string | null = null;
+    
+    if (manualKey && manualKey.trim() !== '' && manualKey.trim() !== apiKey) {
+      const proceedWithManual = confirm(`Use your manual entry "${manualKey.trim()}" as the new API key? This will invalidate the old key.`);
+      if (proceedWithManual) {
+        customKey = manualKey.trim();
+      } else {
+        const proceedWithNew = confirm('Would you like to generate a completely new key instead? Proceeding will invalidate the old key.');
+        if (!proceedWithNew) return;
+      }
+    } else {
+      if (!confirm('Generating a new key will immediately invalidate your existing key. This will break any current external integrations. Proceed?')) return;
+    }
     
     setGoverning(true);
     try {
@@ -55,20 +70,24 @@ export const ApiAccessPage: React.FC = () => {
       const response = await fetch('/api/api-key', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ customKey })
       });
       
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || 'Regeneration failed');
+        throw new Error(data.error || 'Update failed');
       }
 
       setApiKey(data.apiKey);
-      toast.success('New API Access Vector Generated');
-    } catch (err) {
-      toast.error('Failed to generate key');
+      setManualKey('');
+      toast.success(customKey ? 'Custom API Key Saved' : 'New API Access Vector Generated');
+    } catch (err: any) {
+      console.error('API Update Error:', err);
+      toast.error(err.message || 'Failed to update key. Check server logs.');
     } finally {
       setGoverning(false);
     }
@@ -138,13 +157,28 @@ export const ApiAccessPage: React.FC = () => {
             </div>
             <Button 
               variant="ghost" 
-              onClick={generateKey}
+              onClick={handleKeyUpdate}
               disabled={governing}
               className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-brand-gold gap-2"
             >
               <RefreshCw className={`w-3 h-3 ${governing ? 'animate-spin' : ''}`} />
-              Regenerate
+              {manualKey && manualKey.trim() !== apiKey ? 'Update with Manual Key' : 'Regenerate'}
             </Button>
+          </div>
+
+          {/* Manual Entry Input */}
+          <div className="mb-6">
+            <label htmlFor="manual-key" className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2 px-1">
+              Manual Key Override (Optional)
+            </label>
+            <input
+              id="manual-key"
+              type="text"
+              value={manualKey}
+              onChange={(e) => setManualKey(e.target.value)}
+              placeholder="Enter custom key (or leave empty to auto-generate)"
+              className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-3 text-sm font-mono text-text-primary placeholder:text-text-secondary/30 focus:outline-none focus:border-brand-gold transition-colors shadow-inner"
+            />
           </div>
 
           <div className="flex items-center gap-4 bg-bg-base border border-brand-border p-6 rounded-xl shadow-xl">

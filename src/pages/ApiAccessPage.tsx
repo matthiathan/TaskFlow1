@@ -28,7 +28,14 @@ export const ApiAccessPage: React.FC = () => {
           'Authorization': `Bearer ${session.access_token}`
         }
       });
+      
+      if (response.status === 404) {
+        toast.error('API Server routes not found. Please contact admin.');
+        return;
+      }
+
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch key');
       setApiKey(data.apiKey);
     } catch (err) {
       console.error('Failed to fetch API key:', err);
@@ -51,7 +58,13 @@ export const ApiAccessPage: React.FC = () => {
           'Authorization': `Bearer ${session.access_token}`
         }
       });
+      
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Regeneration failed');
+      }
+
       setApiKey(data.apiKey);
       toast.success('New API Access Vector Generated');
     } catch (err) {

@@ -11,8 +11,15 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(cors()); // Enable CORS for external access
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+})); 
 app.use(express.json());
+
+// --- HEALTH CHECK ---
+app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
 // Initialize Supabase Admin Client (Service Role)
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
@@ -125,13 +132,20 @@ app.get("/api/api-key", auth, async (req: any, res: any) => {
 app.post("/api/api-key", auth, async (req: any, res: any) => {
   try {
     const newKey = `ops_${crypto.randomUUID().replace(/-/g, '')}`;
+    
+    // Use upsert to handle cases where profile doesn't exist yet
     const { error } = await supabaseAdmin
       .from('profiles')
-      .update({ api_key: newKey })
-      .eq('id', req.user.id);
+      .upsert({ 
+        id: req.user.id, 
+        api_key: newKey,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
     if (error) throw error;
     res.json({ apiKey: newKey });
   } catch (error: any) {
+    console.error('API Key Generation Error:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -11,7 +11,6 @@ import { TicketingPage } from '../../pages/TicketingPage';
 import { CalendarPage } from '../../pages/CalendarPage';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { AdminPage } from '../../pages/AdminPage';
-import { ApiAccessPage } from '../../pages/ApiAccessPage';
 import { SettingsPage } from '../../pages/SettingsPage';
 
 export function DashboardLayout() {
@@ -61,7 +60,6 @@ export function DashboardLayout() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/reporting" element={role === 'tech' || role === 'admin' ? <TicketingPage /> : <Navigate to="/" replace />} />
           <Route path="/chat" element={<MessagesPage />} />
-          <Route path="/api-access" element={role === 'tech' || role === 'admin' ? <ApiAccessPage /> : <Navigate to="/" replace />} />
           <Route path="/admin" element={role === 'admin' ? <AdminPage /> : <Navigate to="/" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

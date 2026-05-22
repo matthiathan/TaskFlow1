@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Menu, X, ShieldCheck } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
+import { CommandPalette } from '../CommandPalette';
 
 import { TasksPage } from '../../pages/TasksPage';
 import { MessagesPage } from '../../pages/MessagesPage';
@@ -19,6 +20,7 @@ export function DashboardLayout() {
 
   return (
     <div className="flex min-h-screen bg-bg-base">
+      <CommandPalette />
       {/* Mobile Top Bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-bg-elevated border-b border-brand-border flex items-center justify-between px-4 z-50">
         <div className="flex items-center gap-2">

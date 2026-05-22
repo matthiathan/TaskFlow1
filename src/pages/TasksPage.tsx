@@ -9,7 +9,6 @@ import { Button } from '../components/ui/Base';
 import { LayoutGrid, List, Calendar as CalendarIcon, Plus, Loader2 } from 'lucide-react';
 import { Task, TaskStatus } from '../types/database';
 import { cn } from '../lib/utils';
-import { parseTaskDescription, encodeTaskDescription } from '../lib/taskUtils';
 
 export const TasksPage: React.FC = () => {
   const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
@@ -54,7 +53,7 @@ export const TasksPage: React.FC = () => {
     }
   };
 
-  // Support virtual "testing" column seamlessly through custom descriptions
+  // Support virtual columns through status mutations
   const handleUpdateStatusExtended = async (id: string, status: TaskStatus, customDesc?: string) => {
     const updates: Partial<Task> = { status };
     if (customDesc !== undefined) {
@@ -67,8 +66,8 @@ export const TasksPage: React.FC = () => {
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Task Intelligence</h1>
-          <p className="text-text-secondary text-sm mt-1">Manage operational objectives and system directives.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary">Tasks & Objectives</h1>
+          <p className="text-text-secondary text-sm mt-1">Organize team objectives, handle work checklists, and view scheduled tasks.</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -76,7 +75,7 @@ export const TasksPage: React.FC = () => {
             <button
               onClick={() => setView('table')}
               className={cn(
-                'p-2 rounded-md transition-all flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest',
+                'px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider',
                 view === 'table' ? 'bg-bg-base text-brand-gold shadow-sm' : 'text-text-secondary hover:text-text-primary'
               )}
               title="Table view"
@@ -87,7 +86,7 @@ export const TasksPage: React.FC = () => {
             <button
               onClick={() => setView('kanban')}
               className={cn(
-                'p-2 rounded-md transition-all flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest',
+                'px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider',
                 view === 'kanban' ? 'bg-bg-base text-brand-gold shadow-sm' : 'text-text-secondary hover:text-text-primary'
               )}
               title="Kanban Board"
@@ -98,7 +97,7 @@ export const TasksPage: React.FC = () => {
             <button
               onClick={() => setView('calendar')}
               className={cn(
-                'p-2 rounded-md transition-all flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest',
+                'px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider',
                 view === 'calendar' ? 'bg-bg-base text-brand-gold shadow-sm' : 'text-text-secondary hover:text-text-primary'
               )}
               title="Calendar Agenda"
@@ -108,9 +107,9 @@ export const TasksPage: React.FC = () => {
             </button>
           </div>
           
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+          <Button onClick={() => setIsModalOpen(true)} className="gap-2 px-4 h-11 text-xs font-bold">
             <Plus className="w-4 h-4" />
-            <span>New Directive</span>
+            <span>Create Task</span>
           </Button>
         </div>
       </div>
@@ -118,10 +117,10 @@ export const TasksPage: React.FC = () => {
       {loading && tasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32">
           <Loader2 className="w-10 h-10 animate-spin text-brand-gold" />
-          <p className="mt-4 text-text-secondary font-medium uppercase tracking-widest text-[10px]">Synchronizing Secure Uplink...</p>
+          <p className="mt-4 text-text-secondary text-xs font-semibold uppercase tracking-wider">Synchronizing task data...</p>
         </div>
       ) : (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="animate-in fade-in duration-300">
           {view === 'table' ? (
             <TaskList 
               tasks={tasks} 

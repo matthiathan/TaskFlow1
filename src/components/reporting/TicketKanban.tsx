@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { motion, AnimatePresence } from 'motion/react';
 import { Ticket, TicketStatus } from '../../types/database';
 import { cn } from '../../lib/utils';
-import { GripVertical, AlertCircle, Clock, CheckCircle2, QrCode, Cpu, Hash, Camera } from 'lucide-react';
+import { GripVertical, Hash, Camera, QrCode, Clock } from 'lucide-react';
 
 interface TicketKanbanProps {
   tickets: Ticket[];
@@ -41,11 +41,11 @@ const TicketCard: React.FC<{ ticket: Ticket; index: number }> = ({ ticket, index
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-bg-elevated border border-brand-border rounded-lg">
                 <Hash className="w-2.5 h-2.5 text-brand-gold" />
-                <span className="text-[10px] font-black uppercase text-brand-gold tracking-tight">
+                <span className="text-xs font-semibold text-brand-gold">
                   {ticket.serial_number || 'NO_SN'}
                 </span>
               </div>
-              <div className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">
+              <div className="text-xs text-text-secondary font-medium">
                 ID: {ticket.id.slice(0, 8)}
               </div>
             </div>
@@ -66,10 +66,10 @@ const TicketCard: React.FC<{ ticket: Ticket; index: number }> = ({ ticket, index
 
             {/* Core Info */}
             <div className="space-y-1">
-              <h4 className="text-xs font-black uppercase tracking-wide text-text-primary leading-tight">
+              <h4 className="text-xs font-bold text-text-primary leading-tight">
                 {ticket.title}
               </h4>
-              <p className="text-[11px] text-text-secondary line-clamp-3 leading-relaxed">
+              <p className="text-xs text-text-secondary line-clamp-3 leading-relaxed">
                 {ticket.issue_description}
               </p>
             </div>
@@ -78,19 +78,19 @@ const TicketCard: React.FC<{ ticket: Ticket; index: number }> = ({ ticket, index
             <div className="pt-2 border-t border-brand-border flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 {ticket.qr_code && (
-                  <div className="flex items-center gap-1 text-[9px] font-bold text-text-secondary uppercase">
+                  <div className="flex items-center gap-1 text-xs text-text-secondary">
                     <QrCode className="w-3 h-3" />
-                    {ticket.qr_code.slice(0, 10)}
+                    <span>{ticket.qr_code.slice(0, 10)}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-1 text-[9px] font-bold text-text-secondary uppercase">
+                <div className="flex items-center gap-1 text-xs text-text-secondary">
                   <Clock className="w-3 h-3" />
-                  {new Date(ticket.created_at).toLocaleDateString()}
+                  <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
               
               <div className={cn(
-                'text-[8px] font-black uppercase px-2 py-0.5 rounded-full border',
+                'text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border',
                 ticket.priority === 'high' ? 'text-red-500 border-red-500/20 bg-red-500/10' :
                 ticket.priority === 'medium' ? 'text-brand-gold border-brand-gold/20 bg-brand-gold/10' :
                 'text-neutral-500 border-neutral-500/20 bg-neutral-500/10'
@@ -125,14 +125,14 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onUpdateSta
         {TICKET_COLUMNS.map(col => (
           <div key={col.id} className="flex flex-col gap-4">
             <div className="flex items-center justify-between px-3">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-primary flex items-center gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-2">
                 <div className={cn("w-1.5 h-1.5 rounded-full", 
                   col.id === 'awaiting_tech' ? 'bg-red-500' : 
                   col.id === 'diagnostic' ? 'bg-brand-gold' : 
                   col.id === 'repaired' ? 'bg-green-500' : 'bg-neutral-500'
                 )} />
                 {col.title}
-                <span className="text-[10px] text-text-secondary opacity-50 ml-1">
+                <span className="text-xs text-text-secondary opacity-60 ml-1">
                   ({getColTickets(col.id).length})
                 </span>
               </h3>

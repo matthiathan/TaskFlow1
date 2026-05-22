@@ -20,13 +20,12 @@ import {
   Printer,
   TrendingUp,
   BarChart2,
-  PieChart as PieIcon,
   AlertTriangle,
   Layers,
   CheckCircle,
   Activity
 } from 'lucide-react';
-import { TaskPriority, Ticket } from '../types/database';
+import { TaskPriority } from '../types/database';
 import { TicketKanban } from '../components/reporting/TicketKanban';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -37,12 +36,9 @@ import {
   XAxis, 
   YAxis, 
   Tooltip, 
-  Legend, 
   LineChart, 
   Line, 
   CartesianGrid, 
-  PieChart, 
-  Pie, 
   Cell 
 } from 'recharts';
 
@@ -93,7 +89,7 @@ export const TicketingPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.issue_description || !formData.serial_number) {
-      toast.error('Mission parameters incomplete. S/N, Title, and Description are required.');
+      toast.error('All required fields must be complete. Serial Number, Title, and Description are required.');
       return;
     }
 
@@ -129,9 +125,9 @@ export const TicketingPage: React.FC = () => {
 
   // --- RECHARTS MATH ENGINES ---
   const priorityChartData = [
-    { name: 'Category III (Low)', incidents: tickets.filter(t => t.priority === 'low').length, fill: '#10b981' },
-    { name: 'Category II (Med)', incidents: tickets.filter(t => t.priority === 'medium').length, fill: '#3b82f6' },
-    { name: 'Category I (High)', incidents: tickets.filter(t => t.priority === 'high').length, fill: '#ef4444' }
+    { name: 'Low Priority', incidents: tickets.filter(t => t.priority === 'low').length, fill: '#10b981' },
+    { name: 'Medium Priority', incidents: tickets.filter(t => t.priority === 'medium').length, fill: '#3b82f6' },
+    { name: 'High Priority', incidents: tickets.filter(t => t.priority === 'high').length, fill: '#ef4444' }
   ];
 
   const statusChartData = [
@@ -144,26 +140,26 @@ export const TicketingPage: React.FC = () => {
   // --- DYNAMIC DATA EXPORT WORKFLOWS ---
   const handleExportCSV = () => {
     let listToExport = [...filteredTickets];
-    let templateName = "Standard_Operational_Manifest";
+    let templateName = "Standard_Service_Tickets";
 
     if (reportTemplate === 'critical') {
       listToExport = filteredTickets.filter(t => t.priority === 'high');
-      templateName = "SLA_Critical_Incident_Manifest";
+      templateName = "Critical_SLA_Incidents";
     } else if (reportTemplate === 'inventory') {
       listToExport = [...filteredTickets].sort((a, b) => (a.serial_number || '').localeCompare(b.serial_number || ''));
       templateName = "Machine_Maintenance_Checklist";
     }
 
     const headers = [
-      'Incident ID', 
-      'Subject Title', 
-      'Diagnostic Narrative', 
-      'Severity Level', 
-      'Operational Status', 
+      'Ticket ID', 
+      'Ticket Title', 
+      'Description', 
+      'Priority Level', 
+      'Status', 
       'Machine S/N', 
-      'Identification QR', 
-      'Occurrence Time', 
-      'Declaration Date'
+      'QR Code', 
+      'Reported Time', 
+      'Created Date'
     ];
 
     const rows = listToExport.map(t => [
@@ -196,17 +192,17 @@ export const TicketingPage: React.FC = () => {
 
   const handleExportExcel = () => {
     let listToExport = [...filteredTickets];
-    let templateTitle = "DALLMAYR ENTERPRISE FIELD DIRECTIVE";
+    let templateTitle = "DALLMAYR SOUTH AFRICA FIELD SERVICE EXPORT";
     let templateName = "Corporate_Report_Manifest";
 
     if (reportTemplate === 'critical') {
       listToExport = filteredTickets.filter(t => t.priority === 'high');
-      templateTitle = "DALLMAYR ALERT PROTOCOL - SLA CRITICAL";
-      templateName = "Critical_Audit_Matrix";
+      templateTitle = "DALLMAYR SLA CRITICAL REPORT";
+      templateName = "Critical_Incident_Audit";
     } else if (reportTemplate === 'inventory') {
       listToExport = [...filteredTickets].sort((a, b) => (a.serial_number || '').localeCompare(b.serial_number || ''));
-      templateTitle = "DALLMAYR FLEET HARDWARE INVENTORY LOG";
-      templateName = "Fleet_S_N_Audit_Log";
+      templateTitle = "DALLMAYR EQUIPMENT MAINTENANCE SERVICE LOG";
+      templateName = "Equipment_Maintenance_Log";
     }
 
     const htmlContent = `
@@ -216,7 +212,7 @@ export const TicketingPage: React.FC = () => {
         <style>
           body { font-family: 'Segoe UI', Arial, sans-serif; }
           .title-block { background: #d97706; color: #ffffff; font-size: 16px; font-weight: bold; padding: 14px; text-align: center; }
-          .meta-info { font-size: 10px; color: #d97706; padding: 4px; font-weight: bold; border-bottom: 2px solid #d97706; }
+          .meta-info { font-size: 11px; color: #d97706; padding: 4px; font-weight: bold; border-bottom: 2px solid #d97706; }
           th { background: #1c1917; color: #fbbf24; border: 1px solid #44403c; font-size: 11px; padding: 10px; text-transform: uppercase; text-align: left; }
           td { border: 1px solid #e7e5e4; font-size: 11px; padding: 8px; }
           .p-high { color: #ef4444; font-weight: bold; }
@@ -228,23 +224,23 @@ export const TicketingPage: React.FC = () => {
       <body>
         <table>
           <tr><td colspan="6" class="title-block">${templateTitle}</td></tr>
-          <tr><td colspan="6" class="meta-info">Dallmayr Systems Operations Security Grid • Synchronized ${new Date().toLocaleString()}</td></tr>
+          <tr><td colspan="6" class="meta-info">Dallmayr South Africa Corporate Portal • Generated: ${new Date().toLocaleString()}</td></tr>
           <tr></tr>
           <tr>
-            <th>Directive ID</th>
-            <th>Operational Subject</th>
-            <th>Machine S/N</th>
-            <th>Threat Severity</th>
-            <th>Audit Status</th>
-            <th>Declaration Timeline</th>
+            <th>Ticket ID</th>
+            <th>Service Issue</th>
+            <th>Machine Serial Number</th>
+            <th>Priority Severity</th>
+            <th>Current Status</th>
+            <th>Reported Time</th>
           </tr>
           ${listToExport.map(t => `
             <tr>
               <td>${t.id.slice(0, 8)}</td>
               <td><b>${t.title}</b><br/><span style="color:#78716c;">${t.issue_description}</span></td>
               <td><b>${t.serial_number || 'N/A'}</b></td>
-              <td class="badge p-${t.priority === 'high' ? 'high' : t.priority === 'medium' ? 'med' : 'low'}">${t.priority.toUpperCase()}</td>
-              <td class="badge">${t.status.toUpperCase()}</td>
+              <td class="badge p-${t.priority === 'high' ? 'high' : t.priority === 'medium' ? 'med' : 'low'}">${t.priority}</td>
+              <td class="badge">${t.status}</td>
               <td>${t.occurrence_time ? new Date(t.occurrence_time).toLocaleString() : 'N/A'}</td>
             </tr>
           `).join('')}
@@ -261,12 +257,12 @@ export const TicketingPage: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('Custom Amber corporate spreadsheet generated successfully');
+    toast.success('Dallmayr spreadsheet generated successfully');
   };
 
   const handlePrintPDF = () => {
     window.print();
-    toast.success('Pristine PDF compilation completed');
+    toast.success('PDF print command initiated');
   };
 
   return (
@@ -275,40 +271,40 @@ export const TicketingPage: React.FC = () => {
       {/* Header & Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 print:hidden">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Reporting Intelligence</h1>
-          <p className="text-text-secondary text-sm mt-1">Real-time machine incident tracking and field diagnostic hub.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary">Service Ticket Hub</h1>
+          <p className="text-text-secondary text-sm mt-1">Real-time equipment support ticketing and technical log analysis.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
           <button
             onClick={() => setShowAnalytics(prev => !prev)}
             className={cn(
-              "px-4 h-11 border rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm",
+              "px-4 h-11 border rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shadow-sm",
               showAnalytics 
                 ? "bg-brand-gold/10 border-brand-gold text-brand-gold" 
                 : "bg-bg-elevated border-brand-border text-text-secondary hover:text-text-primary"
             )}
           >
             <TrendingUp className="w-4 h-4" />
-            <span>{showAnalytics ? 'Hide Metrics Core' : 'Show Metrics Core'}</span>
+            <span>{showAnalytics ? 'Hide Analytics Sidebar' : 'Show Analytics Sidebar'}</span>
           </button>
 
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
             <input 
               type="text"
-              placeholder="Search S/N, QR, or Title..."
+              placeholder="Search by S/N, QR, or Title..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-bg-elevated border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-brand-gold transition-all"
+              className="w-full bg-bg-elevated border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:outline-none focus:border-brand-gold transition-all"
             />
           </div>
           <Button 
             onClick={() => setShowNewReport(true)}
-            className="px-6 h-11 uppercase font-black text-[10px] tracking-[0.2em]"
+            className="px-6 h-11 text-xs font-bold"
           >
             <Plus className="w-4 h-4" />
-            Log New Incident
+            File Support Ticket
           </Button>
         </div>
       </div>
@@ -318,19 +314,19 @@ export const TicketingPage: React.FC = () => {
         <div className="mb-8 grid grid-cols-1 lg:grid-cols-12 gap-6 print:block print:space-y-6">
           
           {/* Section: Live System Visual Trends */}
-          <Card className="lg:col-span-8 p-6 border-brand-border flex flex-col justify-between shadow-2xl bg-bg-elevated/40 print:border-none print:shadow-none print:p-0">
+          <Card className="lg:col-span-8 p-6 border-brand-border flex flex-col justify-between shadow-md bg-bg-elevated/45 print:border-none print:shadow-none print:p-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-2">
                 <BarChart2 className="w-5 h-5 text-brand-gold" />
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-widest text-text-primary">Operational Incident Visualizer</h3>
-                  <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Metrics synchronized with active server logs</p>
+                  <h3 className="text-sm font-semibold text-text-primary">Service Ticketing Analytics</h3>
+                  <p className="text-xs text-text-secondary">Key trends compiled from current active tickets</p>
                 </div>
               </div>
 
               {/* Print indicator */}
-              <div className="hidden print:block text-[10px] uppercase tracking-widest text-brand-gold font-bold">
-                AUDITOR SYSTEM TRANSCRIPT
+              <div className="hidden print:block text-xs uppercase text-brand-gold font-bold">
+                DALLMAYR MAINTENANCE REPORT TRANSCRIPT
               </div>
             </div>
 
@@ -338,13 +334,13 @@ export const TicketingPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Chart 1: Categorical Priority Distribution */}
-              <div className="h-[200px] bg-bg-base/30 border border-brand-border/40 p-3 rounded-xl flex flex-col justify-between">
-                <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Incident Distribution by Severity</span>
+              <div className="h-[200px] bg-bg-base/30 border border-brand-border/45 p-3 rounded-xl flex flex-col justify-between">
+                <span className="text-xs font-semibold text-text-secondary tracking-wider">Tickets by Severity Level</span>
                 <ResponsiveContainer width="99%" height="86%">
                   <BarChart data={priorityChartData}>
-                    <XAxis dataKey="name" stroke="#888888" fontSize={8} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={8} allowDecimals={false} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: '9px', borderRadius: '8px' }} />
+                    <XAxis dataKey="name" stroke="#888" fontSize={9} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888" fontSize={9} allowDecimals={false} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: '10px', borderRadius: '8px', color: '#fff' }} />
                     <Bar dataKey="incidents" barSize={18} radius={[4, 4, 0, 0]}>
                       {priorityChartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -355,14 +351,14 @@ export const TicketingPage: React.FC = () => {
               </div>
 
               {/* Chart 2: Direct status pipelines */}
-              <div className="h-[200px] bg-bg-base/30 border border-brand-border/40 p-3 rounded-xl flex flex-col justify-between">
-                <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Operational Diagnostics Pipeline</span>
+              <div className="h-[200px] bg-bg-base/30 border border-brand-border/45 p-3 rounded-xl flex flex-col justify-between">
+                <span className="text-xs font-semibold text-text-secondary tracking-wider">Service Diagnostics Pipeline</span>
                 <ResponsiveContainer width="99%" height="86%">
                   <LineChart data={statusChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2e2a24" />
-                    <XAxis dataKey="name" stroke="#888888" fontSize={8} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={8} allowDecimals={false} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: '9px', borderRadius: '8px' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" opacity={0.15} />
+                    <XAxis dataKey="name" stroke="#888" fontSize={9} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888" fontSize={9} allowDecimals={false} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: '10px', borderRadius: '8px', color: '#fff' }} />
                     <Line type="monotone" dataKey="count" stroke="#d97706" strokeWidth={2.5} activeDot={{ r: 5 }} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -377,8 +373,8 @@ export const TicketingPage: React.FC = () => {
                   <Activity className="w-4 h-4 text-neutral-400" />
                 </div>
                 <div>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Total Assets Alert</span>
-                  <span className="text-sm font-bold block">{tickets.length} Incidents</span>
+                  <span className="text-xs text-text-secondary block">Total Tickets</span>
+                  <span className="text-sm font-semibold block">{tickets.length} Incidents</span>
                 </div>
               </div>
               <div className="flex gap-2 items-center">
@@ -386,17 +382,17 @@ export const TicketingPage: React.FC = () => {
                   <AlertTriangle className="w-4 h-4 text-red-500" />
                 </div>
                 <div>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary">High Critical SLA</span>
-                  <span className="text-sm font-bold text-red-500 block">{kpiAlertsCount} Issues</span>
+                  <span className="text-xs text-text-secondary block">High Priority SLA</span>
+                  <span className="text-sm font-semibold text-red-500 block">{kpiAlertsCount} Urgent</span>
                 </div>
               </div>
               <div className="flex gap-2 items-center">
                 <div className="p-2 bg-brand-gold/10 rounded-lg text-brand-gold">
-                  <Layers className="w-4 h-4 text-brand-gold animate-pulse" />
+                  <Layers className="w-4 h-4 text-brand-gold" />
                 </div>
                 <div>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Unassigned Queue</span>
-                  <span className="text-sm font-bold text-brand-gold block">{kpiAwaitingCount} Pending</span>
+                  <span className="text-xs text-text-secondary block">Pending Assignment</span>
+                  <span className="text-sm font-semibold text-brand-gold block">{kpiAwaitingCount} Awaiting</span>
                 </div>
               </div>
               <div className="flex gap-2 items-center">
@@ -404,39 +400,39 @@ export const TicketingPage: React.FC = () => {
                   <CheckCircle className="w-4 h-4 text-green-500" />
                 </div>
                 <div>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Restoration Ratio</span>
-                  <span className="text-sm font-bold text-green-500 block">{resolutionRatio}% Completed</span>
+                  <span className="text-xs text-text-secondary block">Resolution Rate</span>
+                  <span className="text-sm font-semibold text-green-500 block">{resolutionRatio}% Solved</span>
                 </div>
               </div>
             </div>
           </Card>
 
           {/* Section: Custom Template Document Exporters */}
-          <Card className="lg:col-span-4 p-6 border-brand-border flex flex-col justify-between shadow-2xl bg-bg-elevated/40 print:hidden">
+          <Card className="lg:col-span-4 p-6 border-brand-border flex flex-col justify-between shadow-md bg-bg-elevated/45 print:hidden">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-brand-gold" />
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-widest text-text-primary">Documents Manifest Exporter</h3>
-                  <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Configure layouts & compile documents</p>
+                  <h3 className="text-sm font-semibold text-text-primary">Export Support Reports</h3>
+                  <p className="text-xs text-text-secondary">Configure layouts and download documents</p>
                 </div>
               </div>
               
-              <hr className="border-brand-border/20"/>
+              <hr className="border-brand-border/10"/>
 
               {/* Sheet Template Selection dropdown */}
               <div className="space-y-2">
-                <label className="block text-[9px] font-black uppercase tracking-widest text-text-secondary">Report Template Layout</label>
+                <label className="block text-xs font-semibold text-text-secondary">Export Template Layout</label>
                 <select
                   value={reportTemplate}
                   onChange={e => setReportTemplate(e.target.value as any)}
-                  className="w-full bg-bg-base border border-brand-border rounded-lg px-3 py-2 text-xs font-semibold uppercase outline-none focus:border-brand-gold text-text-primary"
+                  className="w-full bg-bg-base border border-brand-border rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:border-brand-gold text-text-primary"
                 >
-                  <option value="standard">Standard Operations Manifest</option>
-                  <option value="critical">SLA Category-I Alert Audit</option>
-                  <option value="inventory">Fleet Serial Inventory Grid</option>
+                  <option value="standard">Standard Support Manifest</option>
+                  <option value="critical">Critical SLA Ticket Auditing</option>
+                  <option value="inventory">Equipment Machine Reference Log</option>
                 </select>
-                <p className="text-[9px] text-text-secondary/70 italic leading-relaxed">
+                <p className="text-xs text-text-secondary/70 italic leading-relaxed">
                   {reportTemplate === 'standard' && 'Includes all diagnostic incident reports logged in real-time, categorized sequentially.'}
                   {reportTemplate === 'critical' && 'Filters outputs exclusively to Categories I (High severity) to audit emergency response times.'}
                   {reportTemplate === 'inventory' && 'Arranges logs sorted structurally by mechanical Serial Number for warehouse maintenance checklists.'}
@@ -451,8 +447,8 @@ export const TicketingPage: React.FC = () => {
                 className="w-full bg-bg-base border border-brand-border hover:border-brand-gold/40 rounded-xl p-3 text-left transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-text-primary group-hover:text-brand-gold transition-colors block">Compile Raw Dataset</span>
-                  <span className="text-[8px] font-bold text-text-secondary/60 uppercase">Sanitized CSV format</span>
+                  <span className="text-xs font-semibold text-text-primary group-hover:text-brand-gold transition-colors block">Export CSV Dataset</span>
+                  <span className="text-xs text-text-secondary/60">Standard CSV Format</span>
                 </div>
                 <Download className="w-4 h-4 text-text-secondary group-hover:text-brand-gold transition-colors" />
               </button>
@@ -462,8 +458,8 @@ export const TicketingPage: React.FC = () => {
                 className="w-full bg-bg-base border border-brand-border hover:border-brand-gold/40 rounded-xl p-3 text-left transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-text-primary group-hover:text-brand-gold transition-colors block">Generate Excel Spreadsheet</span>
-                  <span className="text-[8px] font-bold text-text-secondary/60 uppercase">Amber Custom corporate styles</span>
+                  <span className="text-xs font-semibold text-text-primary group-hover:text-brand-gold transition-colors block">Generate Excel Workbook</span>
+                  <span className="text-xs text-text-secondary/60">Professional Excel format</span>
                 </div>
                 <FileSpreadsheet className="w-4 h-4 text-text-secondary group-hover:text-brand-gold transition-colors" />
               </button>
@@ -473,8 +469,8 @@ export const TicketingPage: React.FC = () => {
                 className="w-full bg-brand-gold text-white focus:bg-brand-gold/80 rounded-xl p-3 text-left transition-all flex items-center justify-between group cursor-pointer shadow-md shadow-brand-gold/10"
               >
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider block">Print Technical Auditor Dossier</span>
-                  <span className="text-[8px] font-bold text-white/70 uppercase">High resolution print-friendly PDF</span>
+                  <span className="text-xs font-semibold block">Print Support Summary Log</span>
+                  <span className="text-xs text-white/80">Print-friendly PDF layout</span>
                 </div>
                 <Printer className="w-4 h-4 text-white" />
               </button>
@@ -489,7 +485,7 @@ export const TicketingPage: React.FC = () => {
         {loading && tickets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[400px] gap-4">
             <Settings2 className="w-12 h-12 text-brand-gold animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary">Syncing Intel Grid...</p>
+            <p className="text-xs font-semibold text-text-secondary">Loading Incident Directory...</p>
           </div>
         ) : (
           <TicketKanban tickets={filteredTickets} onUpdateStatus={updateTicketStatus} />
@@ -506,8 +502,8 @@ export const TicketingPage: React.FC = () => {
                   <ClipboardList className="w-5 h-5 text-brand-gold" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-text-primary">Incident Declaration</h3>
-                  <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest">Protocol 4-A: Hardware Anomaly Logging</p>
+                  <h3 className="text-sm font-semibold text-text-primary">File Support Ticket</h3>
+                  <p className="text-xs text-text-secondary">Please describe the equipment issue and details below</p>
                 </div>
               </div>
               <button 
@@ -523,7 +519,7 @@ export const TicketingPage: React.FC = () => {
                 {/* Identification */}
                 <div className="space-y-4">
                   <Input 
-                    label="Machine S/N"
+                    label="Machine Serial Number"
                     icon={<Hash className="w-4 h-4" />}
                     value={formData.serial_number}
                     onChange={e => setFormData(p => ({ ...p, serial_number: e.target.value }))}
@@ -531,7 +527,7 @@ export const TicketingPage: React.FC = () => {
                     required
                   />
                   <Input 
-                    label="Identification QR"
+                    label="Machine QR Code"
                     icon={<QrCode className="w-4 h-4" />}
                     value={formData.qr_code}
                     onChange={e => setFormData(p => ({ ...p, qr_code: e.target.value }))}
@@ -549,7 +545,7 @@ export const TicketingPage: React.FC = () => {
                 {/* Classification */}
                 <div className="space-y-4">
                   <Input 
-                    label="Subject Title"
+                    label="Ticket Title"
                     icon={<Settings2 className="w-4 h-4" />}
                     value={formData.title}
                     onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
@@ -557,15 +553,15 @@ export const TicketingPage: React.FC = () => {
                     required
                   />
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Severity Grading</label>
+                    <label className="block text-xs font-semibold text-text-secondary">Priority Level</label>
                     <select 
                       className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-gold transition-all"
                       value={formData.priority}
                       onChange={e => setFormData(p => ({ ...p, priority: e.target.value as TaskPriority }))}
                     >
-                      <option value="low">Category III - Maintenance</option>
-                      <option value="medium">Category II - Operational</option>
-                      <option value="high">Category I - Mission Critical</option>
+                      <option value="low">Low Priority</option>
+                      <option value="medium">Medium Priority</option>
+                      <option value="high">High Priority</option>
                     </select>
                   </div>
                 </div>
@@ -573,18 +569,18 @@ export const TicketingPage: React.FC = () => {
 
               <div className="space-y-6">
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Diagnostic Narrative</label>
+                  <label className="block text-xs font-semibold text-text-secondary">Detailed Description</label>
                   <Textarea 
                     value={formData.issue_description}
                     onChange={e => setFormData(p => ({ ...p, issue_description: e.target.value }))}
-                    placeholder="Provide full technical context of the failure..."
+                    placeholder="Provide full details and context of the failure or request..."
                     className="min-h-[120px]"
                     required
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Visual Evidence</label>
+                  <label className="block text-xs font-semibold text-text-secondary">Attachments & Images</label>
                   <FileUpload 
                     onUploadComplete={handleUpload}
                     onFileRemoved={handleFileRemoved}
@@ -599,14 +595,14 @@ export const TicketingPage: React.FC = () => {
                   onClick={() => setShowNewReport(false)}
                   className="flex-grow py-4"
                 >
-                  Abort
+                  Cancel
                 </Button>
                 <Button 
                   type="submit" 
                   isLoading={loading} 
-                  className="flex-[2] py-4 uppercase font-black tracking-[0.2em]"
+                  className="flex-[2] py-4 text-xs font-semibold"
                 >
-                  Transmit Report
+                  Submit Support Ticket
                 </Button>
               </div>
             </form>
@@ -616,17 +612,17 @@ export const TicketingPage: React.FC = () => {
 
       {/* Protocol Summary */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-brand-border pt-8 print:hidden">
-         <div className="flex items-center gap-3 grayscale opacity-50">
+         <div className="flex items-center gap-3 opacity-60">
             <LayoutGrid className="w-4 h-4 text-brand-gold" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">Kanban View</span>
+            <span className="text-xs font-semibold text-text-primary">Kanban Overview Board</span>
          </div>
-         <div className="flex items-center gap-3 grayscale opacity-50">
+         <div className="flex items-center gap-3 opacity-60">
             <History className="w-4 h-4 text-brand-gold" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">30-Day Archive</span>
+            <span className="text-xs font-semibold text-text-primary">30-Day Solved Tickets Archive</span>
          </div>
-         <div className="flex items-center gap-3 grayscale opacity-50">
+         <div className="flex items-center gap-3 opacity-60">
             <Cpu className="w-4 h-4 text-brand-gold" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">Asset Sync ACTIVE</span>
+            <span className="text-xs font-semibold text-text-primary">System Synchronization Active</span>
          </div>
       </div>
     </div>

@@ -53,7 +53,7 @@ export const CommandPalette: React.FC = () => {
           
           let tasksQuery = supabase.from('tasks').select('id, title, description').limit(30);
           if (user) {
-             tasksQuery = tasksQuery.eq('user_id', user.id).order('user_id', { ascending: true });
+             tasksQuery = tasksQuery.or(`user_id.eq.${user.id},collaborators.cs.{${user.id}}`).order('user_id', { ascending: true });
           }
 
           const [tasksRes, profilesRes] = await Promise.all([

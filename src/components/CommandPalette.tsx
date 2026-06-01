@@ -49,8 +49,15 @@ export const CommandPalette: React.FC = () => {
       const fetchData = async () => {
         setLoading(true);
         try {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          let tasksQuery = supabase.from('tasks').select('id, title, description').limit(30);
+          if (user) {
+             tasksQuery = tasksQuery.or(`user_id.eq.${user.id},collaborators.cs.{${user.id}}`);
+          }
+
           const [tasksRes, profilesRes] = await Promise.all([
-            supabase.from('tasks').select('id, title, description').limit(30),
+            tasksQuery,
             supabase.from('profiles').select('id, email, full_name').limit(30)
           ]);
           setTasks(tasksRes.data || []);

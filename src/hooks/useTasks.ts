@@ -16,14 +16,12 @@ export const useTasks = () => {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
+        .or(`user_id.eq.${user.id},collaborators.cs.{${user.id}}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      const userTasks = (data || []).filter(
-        t => t.user_id === user.id || (t.collaborators && t.collaborators.includes(user.id))
-      );
-      setTasks(userTasks);
+      setTasks(data || []);
     } catch (err: any) {
       toast.error(`Fetch Failed: ${err.message}`);
     } finally {

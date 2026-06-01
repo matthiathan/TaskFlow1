@@ -44,7 +44,7 @@ import {
 } from 'recharts';
 
 export const TicketingPage: React.FC = () => {
-  const { tickets, loading, fetchTickets, submitTicket, updateTicketStatus, updateTicket, handleSoftDeleteTicket } = useTickets();
+  const { tickets, loading, fetchTickets, submitTicket, updateTicketStatus, updateTicket, deleteTicket } = useTickets();
   const { role } = useAuth();
   const isAdminOrTech = role === 'admin' || role === 'tech';
   
@@ -144,7 +144,7 @@ export const TicketingPage: React.FC = () => {
   const handleDeleteTicket = async (id: string) => {
     if (window.confirm('Are you sure you want to move this operational record to the system archive?')) {
       try {
-        await handleSoftDeleteTicket(id);
+        await deleteTicket(id);
       } catch (err) {
         // error handling inside hook
       }

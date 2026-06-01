@@ -117,19 +117,18 @@ export const useTickets = () => {
     }
   };
 
-  const handleSoftDeleteTicket = async (id: string) => {
+  const deleteTicket = async (id: string) => {
     try {
       const { error } = await supabase
         .from('tickets')
-        .update({ deleted_at: new Date().toISOString() })
+        .update({ deleted_at: new Date().toISOString() }) // THIS IS THE SOFT DELETE FIX
         .eq('id', id);
 
       if (error) throw error;
-      setTickets(prev => prev.filter(t => t.id !== id));
-      toast.success('Ticket successfully moved to system archive');
+      await fetchTickets();
+      toast.success('Ticket moved to archive successfully');
     } catch (err: any) {
-      toast.error(`System Archive Failed: ${err.message}`);
-      throw err;
+      toast.error('Failed to archive ticket: ' + err.message);
     }
   };
 
@@ -159,7 +158,7 @@ export const useTickets = () => {
     submitTicket, 
     updateTicketStatus,
     updateTicket,
-    handleSoftDeleteTicket,
+    deleteTicket,
     deleteAttachment
   };
 };

@@ -30,7 +30,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onUpdateStatus, onDel
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-16 border border-dashed border-brand-border rounded-xl bg-bg-elevated/30">
-        <p className="text-text-secondary text-sm font-medium uppercase tracking-widest text-[10px]">No operational directives identified in current sector.</p>
+        <p className="text-text-secondary text-sm font-medium uppercase tracking-widest text-[10px]">No tasks found.</p>
       </div>
     );
   }
@@ -127,7 +127,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onUpdateStatus, onDel
                       </div>
                     ) : (
                       <div className="text-[8px] uppercase tracking-widest text-text-secondary font-semibold">
-                        Solo directive
+                        No collaborators
                       </div>
                     )}
                   </td>

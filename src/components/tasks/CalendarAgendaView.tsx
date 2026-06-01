@@ -57,7 +57,7 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({ tasks, o
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <CalIcon className="w-4 h-4 text-brand-gold" />
-            <span className="text-xs font-black uppercase tracking-widest text-text-primary">Operational Calendar</span>
+            <span className="text-xs font-black uppercase tracking-widest text-text-primary">Calendar</span>
           </div>
           <div className="flex items-center gap-1 bg-bg-base border border-brand-border rounded-lg p-0.5">
             <button 
@@ -134,17 +134,17 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({ tasks, o
         </div>
       </div>
 
-      {/* RIGHT: Daily Directive Agenda */}
+      {/* RIGHT: Daily Agenda */}
       <div className="lg:col-span-5 bg-bg-elevated border border-brand-border rounded-xl p-4 shadow-xl flex flex-col min-h-[400px]">
         <div className="flex items-center justify-between pb-3 border-b border-brand-border mb-4">
           <div>
-            <h4 className="text-xs font-black uppercase tracking-widest text-text-secondary">Directives Agenda</h4>
+            <h4 className="text-xs font-black uppercase tracking-widest text-text-secondary">Agenda</h4>
             <span className="text-xs font-bold text-text-primary mt-1 block">
               {format(selectedDay, 'EEEE, d MMMM yyyy')}
             </span>
           </div>
           <div className="px-2 py-1 bg-bg-base rounded-lg border border-brand-border text-[9px] font-black uppercase text-brand-gold">
-            {activeDayTasks.length} Directives
+            {activeDayTasks.length} Tasks
           </div>
         </div>
 
@@ -152,8 +152,8 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({ tasks, o
           {activeDayTasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-brand-border/40 rounded-xl bg-bg-base/20">
               <CalIcon className="w-8 h-8 text-text-secondary/20 mb-3" />
-              <p className="text-[10px] uppercase font-black tracking-widest text-text-secondary">No Directives Today</p>
-              <p className="text-[9px] text-text-secondary/60 mt-1 max-w-[200px]">There are no operational scheduling items on this date.</p>
+              <p className="text-[10px] uppercase font-black tracking-widest text-text-secondary">No Tasks Today</p>
+              <p className="text-[9px] text-text-secondary/60 mt-1 max-w-[200px]">There are no tasks scheduled on this date.</p>
             </div>
           ) : (
             activeDayTasks.map(task => {

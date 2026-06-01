@@ -13,12 +13,24 @@ export const useTasks = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      let query = supabase
         .from('tasks')
         .select('*')
         .or(`user_id.eq.${user.id},collaborators.cs.{${user.id}}`)
         .order('user_id', { ascending: true })
         .order('created_at', { ascending: false });
+
+      if (profile?.role !== 'admin') {
+        query = query.is('deleted_at', null);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       
@@ -119,14 +131,14 @@ export const useTasks = () => {
     try {
       const { error } = await supabase
         .from('tasks')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) throw error;
-      toast.success('Task decommissioned');
+      toast.success('Task deleted');
     } catch (err: any) {
       setTasks(originalTasks);
-      toast.error(`Purge Failed: ${err.message}`);
+      toast.error(`Delete Failed: ${err.message}`);
     }
   };
 

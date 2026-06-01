@@ -53,7 +53,11 @@ export const CommandPalette: React.FC = () => {
           
           let tasksQuery = supabase.from('tasks').select('id, title, description').limit(30);
           if (user) {
+             const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
              tasksQuery = tasksQuery.or(`user_id.eq.${user.id},collaborators.cs.{${user.id}}`).order('user_id', { ascending: true });
+             if (profile?.role !== 'admin') {
+               tasksQuery = tasksQuery.is('deleted_at', null);
+             }
           }
 
           const [tasksRes, profilesRes] = await Promise.all([

@@ -10,15 +10,17 @@ export const useTickets = () => {
   const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
+
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setTickets(data || []);
     } catch (err: any) {
-      toast.error(`Logistics Failure: ${err.message}`);
+      toast.error(`System Failure: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -115,26 +117,18 @@ export const useTickets = () => {
     }
   };
 
-  const deleteTicket = async (id: string) => {
+  const handleSoftDeleteTicket = async (id: string) => {
     try {
-      // First find ticket to delete attachments (not strictly necessary to await, but good practice)
-      const ticket = tickets.find(t => t.id === id);
-      if (ticket?.machine_images && ticket.machine_images.length > 0) {
-        for (const url of ticket.machine_images) {
-           await deleteAttachment(url);
-        }
-      }
-
       const { error } = await supabase
         .from('tickets')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) throw error;
       setTickets(prev => prev.filter(t => t.id !== id));
-      toast.success('Ticket deleted successfully');
+      toast.success('Ticket successfully moved to system archive');
     } catch (err: any) {
-      toast.error(`Delete Failed: ${err.message}`);
+      toast.error(`System Archive Failed: ${err.message}`);
       throw err;
     }
   };
@@ -165,7 +159,7 @@ export const useTickets = () => {
     submitTicket, 
     updateTicketStatus,
     updateTicket,
-    deleteTicket,
+    handleSoftDeleteTicket,
     deleteAttachment
   };
 };

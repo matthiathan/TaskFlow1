@@ -165,7 +165,7 @@ export const DashboardPage: React.FC = () => {
               <Activity className="w-8 h-8 mb-4 opacity-50 text-white" />
               <h4 className="text-sm font-bold mb-1">System Status: Active</h4>
               <p className="text-xs font-medium opacity-90 leading-relaxed">
-                All Dallmayr communication lines and databases are fully synchronized. Performance remains within optimal operational levels.
+                All systems are operational and performing optimally.
               </p>
             </div>
             <div className="absolute -right-4 -bottom-4 opacity-10">

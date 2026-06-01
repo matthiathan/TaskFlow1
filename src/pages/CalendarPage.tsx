@@ -62,8 +62,8 @@ export const CalendarPage: React.FC = () => {
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Ops Schedule</h1>
-          <p className="text-text-secondary text-sm mt-1">Chronological mapping of active system directives.</p>
+          <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Schedule</h1>
+          <p className="text-text-secondary text-sm mt-1">Calendar view of your tasks.</p>
         </div>
         
         <div className="flex items-center gap-3 bg-bg-elevated border border-brand-border rounded-xl p-1 shadow-sm">

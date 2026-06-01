@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
+import { TicketArchiveMenu } from '../components/reporting/TicketArchiveMenu';
 
 export const AdminPage: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -162,8 +163,8 @@ export const AdminPage: React.FC = () => {
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Security Oversight</h1>
-          <p className="text-text-secondary text-sm mt-1">Direct management of human assets and operational clearances.</p>
+          <h1 className="text-3xl font-bold tracking-tight font-serif uppercase tracking-[0.1em]">Users</h1>
+          <p className="text-text-secondary text-sm mt-1">Manage users and roles.</p>
         </div>
         
         <div className="flex items-center gap-4">
@@ -392,7 +393,7 @@ export const AdminPage: React.FC = () => {
       )}
 
       {/* Warning Panel */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80">
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 mb-8">
         <div className="flex gap-4 p-4 bg-red-500/5 border border-red-500/10 rounded-2xl">
           <ShieldAlert className="w-5 h-5 text-red-500 flex-shrink-0" />
           <p className="text-[10px] text-text-secondary leading-relaxed uppercase tracking-tight font-medium">
@@ -406,6 +407,8 @@ export const AdminPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <TicketArchiveMenu />
     </div>
   );
 };

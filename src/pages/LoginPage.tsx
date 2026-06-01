@@ -48,7 +48,7 @@ export const LoginPage: React.FC = () => {
             <ShieldCheck className="text-white w-10 h-10" />
           </div>
           <h1 className="text-3xl font-black uppercase tracking-widest text-text-primary">OpsPortal</h1>
-          <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.3em] mt-1 italic">Enterprise Tactical Gateway</p>
+          <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.3em] mt-1 italic">Enterprise Gateway</p>
         </div>
 
         <Card className="p-8 shadow-2xl bg-bg-elevated/40 backdrop-blur-xl border-brand-border">
@@ -81,7 +81,7 @@ export const LoginPage: React.FC = () => {
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-brand-gold transition-colors"
             >
-              {isSignUp ? 'Already registered? Authenticate' : 'New Tactical Unit? Register'}
+              {isSignUp ? 'Already registered? Log in' : 'New User? Register'}
             </button>
           </div>
         </Card>

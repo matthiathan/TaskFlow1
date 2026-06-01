@@ -213,7 +213,7 @@ export const MessagesPage: React.FC = () => {
       
       <div className="mt-4 flex items-center gap-2 text-[8px] font-bold text-text-secondary uppercase tracking-[0.2em] px-2">
         <ShieldAlert className="w-3 h-3 text-brand-gold" />
-        Operational security protocols are active. Do not transmit sensitive cipher keys.
+        Messages are end-to-end encrypted.
       </div>
     </div>
   );

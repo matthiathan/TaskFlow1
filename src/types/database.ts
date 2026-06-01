@@ -11,6 +11,7 @@ export interface Task {
   due_date: string | null;
   user_id: string;
   collaborators: string[];
+  deleted_at?: string | null;
 }
 
 export type Role = 'user' | 'tech' | 'admin';
@@ -57,6 +58,7 @@ export interface Ticket {
   occurrence_time: string | null;
   machine_images: string[];
   user_id: string;
+  deleted_at?: string | null;
 }
 
 export interface Asset {

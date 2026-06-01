@@ -222,7 +222,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
         // 2. Transmit Secure Message to Secure Comms inbox
         try {
           await supabase.from('messages').insert({
-            content: `🚨 [Directive Alert] You were assigned and mentioned in task "${formData.title || 'Operational Directive'}": "${textComments}"`,
+            content: `🔔 [Task Alert] You were assigned and mentioned in task "${formData.title || 'Task'}": "${textComments}"`,
             sender_id: currentUser.id,
             recipient_id: matchedProfile.id
           });
@@ -275,52 +275,52 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
       id="task-form" 
       isOpen={isOpen} 
       onClose={onClose} 
-      title={initialData ? "Modify System Directive" : "Launch Operational Directive"}
-      className="max-w-4xl"
+      title={initialData ? "Edit Task" : "Create Task"}
+      className="max-w-[1165px]"
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-h-[80vh] overflow-y-auto pr-2 scrollbar-thin">
         
         {/* LEFT COMPONENT: Primary Parameters Form */}
-        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-5">
+        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-5 lg:pr-6 lg:border-r lg:border-brand-border/30">
           <Input 
-            label="Directive Subject"
+            label="Task Title"
             value={formData.title}
             onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
-            placeholder="System calibration, coolant flushing..."
+            placeholder="Prepare quarterly report..."
             required
           />
           
           <Textarea 
-            label="Parameter Briefing"
+            label="Description"
             value={taskText}
             onChange={e => setTaskText(e.target.value)}
-            placeholder="Operational guidelines and telemetry parameters..."
+            placeholder="Task description and details..."
             className="min-h-[100px]"
           />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Security Threat level</label>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Priority</label>
               <select 
                 className="w-full bg-bg-base border border-brand-border rounded-lg px-3 py-2 text-xs font-semibold uppercase outline-none focus:border-brand-gold input-recessed text-text-primary"
                 value={formData.priority}
                 onChange={e => setFormData(p => ({ ...p, priority: e.target.value as TaskPriority }))}
               >
-                <option value="low">Category III - Low</option>
-                <option value="medium">Category II - Medium</option>
-                <option value="high">Category I - High Critical</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
               </select>
             </div>
             
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Operation Status</label>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Status</label>
               <select 
                 className="w-full bg-bg-base border border-brand-border rounded-lg px-3 py-2 text-xs font-semibold uppercase outline-none focus:border-brand-gold input-recessed text-text-primary"
                 value={formData.status}
                 onChange={e => setFormData(p => ({ ...p, status: e.target.value as TaskStatus }))}
               >
-                <option value="pending">Pending Plan</option>
-                <option value="in_progress">Active Duty</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
               </select>
             </div>
@@ -336,9 +336,9 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
           {/* Personnel access credentials */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Personnel Clearance</label>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Assign Collaborators</label>
               <span className="text-[8px] font-black uppercase text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 border border-brand-gold/20 rounded">
-                {formData.collaborators.length + 1} Cleared Staff
+                {formData.collaborators.length + 1} Assigned
               </span>
             </div>
             
@@ -347,7 +347,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
                 const isCleared = formData.collaborators.includes(profile.id);
                 const isSelf = currentUser && currentUser.id === profile.id;
 
-                if (isSelf) return null; // Creator of directive is cleared by default
+                if (isSelf) return null; // Creator of task is assigned by default
 
                 return (
                   <button
@@ -377,27 +377,25 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
                 isLoading={deleting}
                 className="px-4 border-red-500/30 text-red-500 hover:bg-red-500/10 uppercase font-bold text-[10px] tracking-widest"
               >
-                Force Terminate
+                Delete
               </Button>
             )}
-            <Button type="button" variant="ghost" onClick={onClose} className="flex-1 uppercase font-bold text-[10px] tracking-widest text-text-secondary">Abort</Button>
+            <Button type="button" variant="ghost" onClick={onClose} className="flex-1 uppercase font-bold text-[10px] tracking-widest text-text-secondary">Cancel</Button>
             <Button type="submit" isLoading={loading} className="flex-1 uppercase font-black text-[10px] tracking-widest">
-              {initialData ? "Synchronize Directive" : "Commence Plan"}
+              {initialData ? "Save Changes" : "Create Task"}
             </Button>
           </div>
         </form>
 
         {/* RIGHT COMPONENT: Automated Checklist + Secure Activity comments */}
-        <div className="lg:col-span-1 border-r border-brand-border/30 hidden lg:block" />
-
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-5 space-y-6">
           
           {/* Automated Subtask checklist Tree */}
           <div className="space-y-3 bg-bg-base/30 border border-brand-border/60 p-4 rounded-xl">
             <div className="flex items-center justify-between pb-2 border-b border-brand-border/30">
               <div className="flex items-center gap-1.5">
                 <ClipboardCheck className="w-4 h-4 text-brand-gold" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-text-primary">Operational Checklist</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-text-primary">Task Checklist</span>
               </div>
               <span className="text-[9px] font-mono text-brand-gold font-bold">{subtasksProgress.percentage}%</span>
             </div>
@@ -415,7 +413,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
             {/* Subtasks tree lists */}
             <div className="space-y-2 max-h-[160px] overflow-y-auto scrollbar-thin pr-1">
               {subtasks.length === 0 ? (
-                <p className="text-[9px] text-text-secondary italic">No sub-procedures declared yet.</p>
+                <p className="text-[9px] text-text-secondary italic">No checklist items yet.</p>
               ) : (
                 subtasks.map((sub) => (
                   <div 
@@ -466,7 +464,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
             <div className="flex gap-2">
               <input 
                 type="text"
-                placeholder="Declare procedure checkpoint..."
+                placeholder="Add checklist item..."
                 value={newSubtaskTitle}
                 onChange={e => setNewSubtaskTitle(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddSubtask())}
@@ -487,17 +485,17 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
             <div className="flex items-center justify-between pb-2 border-b border-brand-border/30">
               <div className="flex items-center gap-1.5">
                 <MessageSquare className="w-4 h-4 text-brand-gold" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-text-primary">Directives Telegram Logs</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-text-primary">Task Comments</span>
               </div>
-              <span className="text-[7px] font-black uppercase bg-brand-gold/10 px-1.5 py-0.5 border border-brand-gold/25 text-brand-gold rounded">
-                SECURE
+                <span className="text-[7px] font-black uppercase bg-brand-gold/10 px-1.5 py-0.5 border border-brand-gold/25 text-brand-gold rounded">
+                INTERNAL
               </span>
             </div>
 
             {/* List historic comments */}
             <div className="space-y-3 max-h-[170px] overflow-y-auto pr-1 scrollbar-thin">
               {comments.length === 0 ? (
-                <p className="text-[9px] text-text-secondary italic py-2">No telegram updates logged.</p>
+                <p className="text-[9px] text-text-secondary italic py-2">No comments logged.</p>
               ) : (
                 comments.map((comm) => (
                   <div key={comm.id} className="p-2 bg-bg-elevated/40 border border-brand-border/30 rounded-lg space-y-1">
@@ -521,7 +519,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
               <div className="relative">
                 <textarea 
                   rows={2}
-                  placeholder="Insert secure comment... (Type @username to assign collaborator & alert inbox)"
+                  placeholder="Add comment... (Type @username to mention a person)"
                   value={newCommentText}
                   onChange={e => setNewCommentText(e.target.value)}
                   className="w-full bg-bg-base border border-brand-border rounded-lg p-2 text-[10px] font-medium leading-normal text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-brand-gold transition-colors resize-none shadow-inner"
@@ -533,7 +531,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
                 className="w-full bg-bg-elevated border border-brand-border text-[9px] font-black uppercase tracking-widest text-text-primary hover:text-brand-gold hover:border-brand-gold p-2 rounded-lg flex items-center justify-center gap-1.5 shadow-sm transition-all"
               >
                 <Send className="w-3 h-3 text-brand-gold" />
-                <span>Publish Telegram Log</span>
+                <span>Post Comment</span>
               </button>
             </div>
           </div>

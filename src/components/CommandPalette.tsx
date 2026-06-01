@@ -98,7 +98,7 @@ export const CommandPalette: React.FC = () => {
       }
 
       // Help index overlay: ? flag
-      if (e.key === '?') {
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setIsHelpOpen(prev => !prev);
         setIsPaletteOpen(false);
@@ -106,7 +106,7 @@ export const CommandPalette: React.FC = () => {
       }
 
       // Quick trigger create action anywhere on 'c' key press
-      if (e.key.toLowerCase() === 'c') {
+      if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         navigate('/tasks?action=create');
         toast.info("Opening new task creation form");
@@ -138,7 +138,7 @@ export const CommandPalette: React.FC = () => {
           };
 
           const matched = shortcuts[currentKey];
-          if (matched) {
+          if (matched && !e.ctrlKey && !e.metaKey && !e.altKey) {
             e.preventDefault();
             lastKeyPressedRef.current = null;
             navigate(matched.route);
@@ -149,7 +149,7 @@ export const CommandPalette: React.FC = () => {
       }
 
       // Log potential sequence start
-      if (e.key.toLowerCase() === 'g') {
+      if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         lastKeyPressedRef.current = { key: 'g', time: now };
       } else {
         lastKeyPressedRef.current = null;

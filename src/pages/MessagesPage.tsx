@@ -43,29 +43,29 @@ export const MessagesPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-grow flex gap-6 min-h-0">
-        {/* Chat List / Channels (Condensed) */}
-        <div className="hidden lg:flex flex-col w-56 gap-2">
+      <div className="flex-grow flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0">
+        {/* Chat List / Channels */}
+        <div className="flex overflow-x-auto lg:overflow-visible lg:flex-col lg:w-56 gap-2 shrink-0 pb-2 lg:pb-0 scrollbar-thin">
           <button 
             onClick={() => setSelectedRecipient(null)}
             className={cn(
-              "flex items-center gap-3 p-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all mb-2",
+              "flex-shrink-0 flex items-center gap-3 p-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all lg:mb-2",
               !selectedRecipient ? "bg-brand-gold text-white border-brand-gold shadow-lg shadow-brand-gold/20" : "bg-bg-elevated/40 border-brand-border text-text-secondary hover:bg-bg-elevated"
             )}
           >
             <Globe className="w-4 h-4" />
-            Global Net
+            <span className="whitespace-nowrap">Global Net</span>
           </button>
           
-          <div className="flex items-center gap-2 px-3 py-1 mb-1">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 mb-1">
             <MessageSquare className="w-3 h-3 text-brand-gold" />
             <span className="text-[8px] font-black uppercase tracking-[0.2em] text-text-secondary">Recent Comms</span>
           </div>
 
-          <div className="flex flex-col gap-1 overflow-y-auto pr-1 scrollbar-thin">
+          <div className="flex lg:flex-col gap-2 lg:gap-1 overflow-visible lg:overflow-y-auto lg:pr-1 scrollbar-thin">
             {/* Pinned / Selected recipient from search that isn't in conversations yet */}
             {selectedRecipient && !conversations.some(c => c.participant?.id === selectedRecipient.id) && (
-              <div className="group relative">
+              <div className="group relative flex-shrink-0 w-48 lg:w-full">
                 <button 
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all text-left bg-brand-gold text-white border-brand-gold shadow-lg shadow-brand-gold/20"
                 >
@@ -87,7 +87,7 @@ export const MessagesPage: React.FC = () => {
             )}
 
             {conversations.map((conv) => (
-              <div key={conv.id} className="group relative">
+              <div key={conv.id} className="group relative flex-shrink-0 w-48 lg:w-full">
                 <button 
                   onClick={() => setSelectedRecipient(conv.participant || null)}
                   className={cn(

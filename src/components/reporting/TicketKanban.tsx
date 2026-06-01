@@ -8,6 +8,9 @@ import { GripVertical, Hash, Camera, QrCode, Clock } from 'lucide-react';
 interface TicketKanbanProps {
   tickets: Ticket[];
   onUpdateStatus: (id: string, status: TicketStatus) => void;
+  onEditTicket?: (ticket: Ticket) => void;
+  onDeleteTicket?: (id: string) => void;
+  isAdminOrTech?: boolean;
 }
 
 const TICKET_COLUMNS: { id: TicketStatus; title: string }[] = [
@@ -17,7 +20,13 @@ const TICKET_COLUMNS: { id: TicketStatus; title: string }[] = [
   { id: 'closed', title: 'Archive' },
 ];
 
-const TicketCard: React.FC<{ ticket: Ticket; index: number }> = ({ ticket, index }) => {
+const TicketCard: React.FC<{ 
+  ticket: Ticket; 
+  index: number; 
+  onEdit?: (ticket: Ticket) => void;
+  onDelete?: (id: string) => void;
+  isAdminOrTech?: boolean;
+}> = ({ ticket, index, onEdit, onDelete, isAdminOrTech }) => {
   return (
     <Draggable draggableId={ticket.id} index={index}>
       {(provided, snapshot) => (
@@ -31,12 +40,31 @@ const TicketCard: React.FC<{ ticket: Ticket; index: number }> = ({ ticket, index
         >
           <div 
             {...provided.dragHandleProps} 
-            className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing p-1 transition-opacity"
+            className="absolute left-3 top-3 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing p-1 transition-opacity z-10"
           >
             <GripVertical className="w-4 h-4 text-text-secondary" />
           </div>
 
-          <div className="flex flex-col gap-3">
+          {isAdminOrTech && (
+            <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity z-10">
+              <button 
+                onClick={(e) => { e.stopPropagation(); onEdit?.(ticket); }}
+                className="p-1.5 bg-bg-elevated hover:bg-brand-gold hover:text-white rounded-lg border border-brand-border hover:border-brand-gold transition-colors text-text-secondary"
+                title="Edit Ticket"
+              >
+                <Hash className="w-3.5 h-3.5" />
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete?.(ticket.id); }}
+                className="p-1.5 bg-bg-elevated hover:bg-red-500 hover:text-white rounded-lg border border-brand-border hover:border-red-500 transition-colors text-text-secondary"
+                title="Delete Ticket"
+              >
+                <div className="w-3.5 h-3.5 flex items-center justify-center font-bold">X</div>
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3 mt-4">
             {/* Header: S/N and ID */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-bg-elevated border border-brand-border rounded-lg">
@@ -105,7 +133,7 @@ const TicketCard: React.FC<{ ticket: Ticket; index: number }> = ({ ticket, index
   );
 };
 
-export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onUpdateStatus }) => {
+export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onUpdateStatus, onEditTicket, onDeleteTicket, isAdminOrTech }) => {
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
     if (!destination) return;
@@ -158,7 +186,13 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onUpdateSta
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <TicketCard ticket={ticket} index={index} />
+                        <TicketCard 
+                          ticket={ticket} 
+                          index={index} 
+                          onEdit={onEditTicket}
+                          onDelete={onDeleteTicket}
+                          isAdminOrTech={isAdminOrTech}
+                        />
                       </motion.div>
                     ))}
                   </AnimatePresence>

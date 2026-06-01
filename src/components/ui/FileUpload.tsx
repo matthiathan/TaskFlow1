@@ -52,7 +52,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         onUploadComplete(publicUrl);
         toast.success(`${file.name} uploaded`);
       } catch (err: any) {
-        toast.error(`Upload error: ${err.message}`);
+        if (err.message && err.message.toLowerCase().includes('row-level security')) {
+          toast.error("Storage Error: RLS policy violation. Please update 'tickets' bucket policies in Supabase to allow INSERT activities.");
+        } else if (err.message && err.message.toLowerCase().includes('bucket not found')) {
+          toast.error(`Storage Error: Supabase could not find the 'tickets' bucket. Please ensure you created a bucket named exactly 'tickets' and set it to PUBLIC.`);
+        } else {
+          toast.error(`Upload error: ${err.message}`);
+        }
       }
     }
 
@@ -70,19 +76,26 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
     // Prompt logic: "if a user uploads a file but clicks an 'X' to remove it from the form... 
     // the system must execute an API call to permanently delete the orphaned file from the cloud bucket"
-    try {
-      const parts = url.split('/');
-      const fileName = parts[parts.length - 1];
-      
-      const { error } = await supabase.storage
-        .from('tickets')
-        .remove([fileName]);
+      try {
+        const parts = url.split('/');
+        const fileName = parts[parts.length - 1];
+        
+        const { error } = await supabase.storage
+          .from('tickets')
+          .remove([fileName]);
 
-      if (error) throw error;
-      toast.info(`Orphaned archive ${fileToRemove?.name} purged from storage`);
-    } catch (err: any) {
-      console.error('Purge error:', err);
-    }
+        if (error) throw error;
+        toast.info(`Orphaned archive ${fileToRemove?.name} purged from storage`);
+      } catch (err: any) {
+        if (err.message && err.message.toLowerCase().includes('row-level security')) {
+            console.error("Bucket 'tickets' RLS policy prevents deletion.");
+            toast.error("Storage Error: RLS policy prevents file deletion. Please allow DELETE on 'tickets' bucket.");
+        } else if (err.message && err.message.toLowerCase().includes('bucket not found')) {
+            console.error("Bucket 'tickets' not found for deletion.");
+        } else {
+            console.error('Purge error:', err);
+        }
+      }
   };
 
   return (

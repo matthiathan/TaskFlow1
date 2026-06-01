@@ -10,13 +10,20 @@ export const useTasks = () => {
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTasks(data || []);
+      
+      const userTasks = (data || []).filter(
+        t => t.user_id === user.id || (t.collaborators && t.collaborators.includes(user.id))
+      );
+      setTasks(userTasks);
     } catch (err: any) {
       toast.error(`Fetch Failed: ${err.message}`);
     } finally {

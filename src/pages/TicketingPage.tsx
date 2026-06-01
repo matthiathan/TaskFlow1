@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTickets } from '../hooks/useTickets';
+import { useAuth } from '../contexts/AuthContext';
 import { Card, Input, Textarea, Button } from '../components/ui/Base';
 import { FileUpload } from '../components/ui/FileUpload';
 import { 
@@ -25,7 +26,7 @@ import {
   CheckCircle,
   Activity
 } from 'lucide-react';
-import { TaskPriority } from '../types/database';
+import { TaskPriority, Ticket } from '../types/database';
 import { TicketKanban } from '../components/reporting/TicketKanban';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -43,8 +44,13 @@ import {
 } from 'recharts';
 
 export const TicketingPage: React.FC = () => {
-  const { tickets, loading, fetchTickets, submitTicket, updateTicketStatus } = useTickets();
+  const { tickets, loading, fetchTickets, submitTicket, updateTicketStatus, updateTicket, deleteTicket } = useTickets();
+  const { role } = useAuth();
+  const isAdminOrTech = role === 'admin' || role === 'tech';
+  
   const [showNewReport, setShowNewReport] = useState(false);
+  const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  
   const [showAnalytics, setShowAnalytics] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [reportTemplate, setReportTemplate] = useState<'standard' | 'critical' | 'inventory'>('standard');
@@ -54,6 +60,7 @@ export const TicketingPage: React.FC = () => {
     const action = searchParams.get('action');
     if (action === 'create') {
       setShowNewReport(true);
+      setEditingTicketId(null);
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
@@ -67,6 +74,19 @@ export const TicketingPage: React.FC = () => {
     occurrence_time: new Date().toISOString().slice(0, 16),
     machine_images: [] as string[]
   });
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      issue_description: '',
+      priority: 'medium',
+      qr_code: '',
+      serial_number: '',
+      occurrence_time: new Date().toISOString().slice(0, 16),
+      machine_images: []
+    });
+    setEditingTicketId(null);
+  }
 
   useEffect(() => {
     fetchTickets();
@@ -94,20 +114,40 @@ export const TicketingPage: React.FC = () => {
     }
 
     try {
-      await submitTicket(formData);
-      setFormData({
-        title: '',
-        issue_description: '',
-        priority: 'medium',
-        qr_code: '',
-        serial_number: '',
-        occurrence_time: new Date().toISOString().slice(0, 16),
-        machine_images: []
-      });
+      if (editingTicketId) {
+        await updateTicket(editingTicketId, formData);
+      } else {
+        await submitTicket(formData);
+      }
+      resetForm();
       setShowNewReport(false);
       fetchTickets();
     } catch (err) {
       // Error handled in hook
+    }
+  };
+
+  const handleEditTicket = (ticket: Ticket) => {
+    setFormData({
+      title: ticket.title,
+      issue_description: ticket.issue_description,
+      priority: ticket.priority,
+      qr_code: ticket.qr_code || '',
+      serial_number: ticket.serial_number || '',
+      occurrence_time: ticket.occurrence_time || new Date().toISOString().slice(0, 16),
+      machine_images: ticket.machine_images || []
+    });
+    setEditingTicketId(ticket.id);
+    setShowNewReport(true);
+  };
+
+  const handleDeleteTicket = async (id: string) => {
+    if (window.confirm('Are you sure you want to permanently delete this ticket?')) {
+      try {
+        await deleteTicket(id);
+      } catch (err) {
+        // error handling inside hook
+      }
     }
   };
 
@@ -488,7 +528,13 @@ export const TicketingPage: React.FC = () => {
             <p className="text-xs font-semibold text-text-secondary">Loading Incident Directory...</p>
           </div>
         ) : (
-          <TicketKanban tickets={filteredTickets} onUpdateStatus={updateTicketStatus} />
+          <TicketKanban 
+            tickets={filteredTickets} 
+            onUpdateStatus={updateTicketStatus} 
+            onEditTicket={handleEditTicket}
+            onDeleteTicket={handleDeleteTicket}
+            isAdminOrTech={isAdminOrTech}
+          />
         )}
       </div>
 
@@ -502,12 +548,16 @@ export const TicketingPage: React.FC = () => {
                   <ClipboardList className="w-5 h-5 text-brand-gold" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-text-primary">File Support Ticket</h3>
-                  <p className="text-xs text-text-secondary">Please describe the equipment issue and details below</p>
+                  <h3 className="text-sm font-semibold text-text-primary">
+                    {editingTicketId ? 'Edit Support Ticket' : 'File Support Ticket'}
+                  </h3>
+                  <p className="text-xs text-text-secondary">
+                    {editingTicketId ? 'Update the details below' : 'Please describe the equipment issue and details below'}
+                  </p>
                 </div>
               </div>
               <button 
-                onClick={() => setShowNewReport(false)}
+                onClick={() => { resetForm(); setShowNewReport(false); }}
                 className="p-2 hover:bg-neutral-500/10 rounded-xl transition-colors"
               >
                 <X className="w-5 h-5 text-text-secondary" />
@@ -592,7 +642,7 @@ export const TicketingPage: React.FC = () => {
                 <Button 
                   type="button" 
                   variant="secondary" 
-                  onClick={() => setShowNewReport(false)}
+                  onClick={() => { resetForm(); setShowNewReport(false); }}
                   className="flex-grow py-4"
                 >
                   Cancel
@@ -602,7 +652,7 @@ export const TicketingPage: React.FC = () => {
                   isLoading={loading} 
                   className="flex-[2] py-4 text-xs font-semibold"
                 >
-                  Submit Support Ticket
+                  {editingTicketId ? 'Update Ticket' : 'Submit Support Ticket'}
                 </Button>
               </div>
             </form>

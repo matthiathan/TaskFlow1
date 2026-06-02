@@ -75,15 +75,22 @@ export const useExecutiveAnalytics = () => {
     mostActiveDepartment: 'Unassigned'
   });
 
+  const [telemetry, setTelemetry] = useState<any[]>([]);
+  const [telemetryMetrics, setTelemetryMetrics] = useState({
+    avgSpeed: 0,
+    highSpeedIncidents: 0
+  });
+
   const fetchAnalyticsData = useCallback(async () => {
     try {
       setLoading(true);
 
       // Fetch all core datasets
-      const [profilesRes, tasksRes, ticketsRes] = await Promise.all([
+      const [profilesRes, tasksRes, ticketsRes, telemetryRes] = await Promise.all([
         supabase.from('profiles').select('*'),
         supabase.from('tasks').select('*').is('deleted_at', null),
-        supabase.from('tickets').select('*').is('deleted_at', null)
+        supabase.from('tickets').select('*').is('deleted_at', null),
+        supabase.from('driver_telemetry').select('*').order('recorded_at', { ascending: true })
       ]);
 
       if (profilesRes.error) throw profilesRes.error;
@@ -93,6 +100,7 @@ export const useExecutiveAnalytics = () => {
       const fetchedProfiles = (profilesRes.data || []) as Profile[];
       const fetchedTasks = (tasksRes.data || []) as Task[];
       const fetchedTickets = (ticketsRes.data || []) as any[];
+      const fetchedTelemetry = (telemetryRes?.data || []) as any[];
 
       setProfiles(fetchedProfiles);
       setTasks(fetchedTasks);
@@ -237,6 +245,30 @@ export const useExecutiveAnalytics = () => {
         }
       });
 
+      // Calculate telemetry metrics
+      const validTelemetry = fetchedTelemetry.filter((item: any) => item.speed_kmh !== null && item.speed_kmh !== undefined);
+      const totalSpeedSum = validTelemetry.reduce((sum: number, item: any) => sum + item.speed_kmh, 0);
+      const avgSpeed = validTelemetry.length > 0 ? parseFloat((totalSpeedSum / validTelemetry.length).toFixed(1)) : 0;
+      const highSpeedIncidents = validTelemetry.filter((item: any) => item.speed_kmh > 110).length;
+
+      // Group/map telemetry for charts
+      const mappedTelemetry = fetchedTelemetry.map((log: any) => {
+        const profile = profileMap.get(log.tech_id);
+        return {
+          id: log.id,
+          recorded_at: log.recorded_at,
+          time: new Date(log.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          speed: Math.round(log.speed_kmh),
+          name: profile?.full_name || 'Fleet Driver'
+        };
+      });
+
+      setTelemetry(mappedTelemetry);
+      setTelemetryMetrics({
+        avgSpeed,
+        highSpeedIncidents
+      });
+
       setDepartmentData(formattedDeptData);
       setEmployeeData(formattedEmployeeData);
       setKpiMetrics({
@@ -270,9 +302,17 @@ export const useExecutiveAnalytics = () => {
       })
       .subscribe();
 
+    const telemetryChannel = supabase
+      .channel('executive_telemetry_sync')
+      .on('postgres_changes' as any, { event: '*', table: 'driver_telemetry' } as any, () => {
+        fetchAnalyticsData();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(tasksChannel);
       supabase.removeChannel(ticketsChannel);
+      supabase.removeChannel(telemetryChannel);
     };
   }, [fetchAnalyticsData]);
 
@@ -284,6 +324,8 @@ export const useExecutiveAnalytics = () => {
     departmentData,
     employeeData,
     kpiMetrics,
+    telemetry,
+    telemetryMetrics,
     refresh: fetchAnalyticsData
   };
 };

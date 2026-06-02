@@ -10,9 +10,13 @@ import { cn } from './lib/utils';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { LoginPage } from './pages/LoginPage';
 import { useAuth } from './contexts/AuthContext';
+import { useFleetTelemetry } from './hooks/useFleetTelemetry';
 
 function AppContent() {
   const { user, loading } = useAuth();
+
+  // Mount the live fleet tracking telemetry engine globally
+  useFleetTelemetry();
 
   if (loading) {
     return (

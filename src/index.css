@@ -44,3 +44,12 @@
 .dark .input-recessed {
   box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
 }
+
+/* Custom Leaflet Marker Fixes */
+.leaflet-marker-icon {
+  overflow: visible !important;
+}
+
+.custom-leaflet-marker:hover {
+  z-index: 1000 !important;
+}

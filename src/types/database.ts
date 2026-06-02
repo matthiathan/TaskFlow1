@@ -95,3 +95,14 @@ export interface FieldRoute {
   road_tech_profile?: Profile | null;
 }
 
+export interface TelemetryLog {
+  id: string;
+  tech_id: string;
+  latitude: number;
+  longitude: number;
+  speed_kmh: number;
+  recorded_at: string;
+  profile?: Profile | null;
+}
+
+

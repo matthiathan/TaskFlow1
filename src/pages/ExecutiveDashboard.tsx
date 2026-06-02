@@ -12,7 +12,9 @@ import {
   Cell, 
   PieChart, 
   Pie, 
-  Legend
+  Legend,
+  AreaChart,
+  Area
 } from 'recharts';
 import { 
   Activity, 
@@ -24,7 +26,9 @@ import {
   ArrowUpDown, 
   Search,
   CheckCircle,
-  RefreshCw
+  RefreshCw,
+  Gauge,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Department } from '../types/database';
@@ -52,7 +56,7 @@ type SortField = 'name' | 'department' | 'role' | 'completedTasks' | 'avgTAT';
 type SortOrder = 'asc' | 'desc';
 
 export const ExecutiveDashboard: React.FC = () => {
-  const { loading, departmentData, employeeData, kpiMetrics, refresh } = useExecutiveAnalytics();
+  const { loading, departmentData, employeeData, kpiMetrics, telemetry, telemetryMetrics, refresh } = useExecutiveAnalytics();
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -159,7 +163,7 @@ export const ExecutiveDashboard: React.FC = () => {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         
         {/* KPI 1 */}
         <Card className="p-6 bg-bg-elevated/45 backdrop-blur-sm border-brand-border">
@@ -204,7 +208,7 @@ export const ExecutiveDashboard: React.FC = () => {
         </Card>
 
         {/* KPI 3 */}
-        <Card className="p-6 bg-bg-elevated/45 backdrop-blur-sm border-brand-border sm:col-span-2 lg:col-span-1">
+        <Card className="p-6 bg-bg-elevated/45 backdrop-blur-sm border-brand-border">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 rounded-lg bg-bg-base border border-brand-border text-brand-gold">
               <Building2 className="w-5 h-5" />
@@ -222,6 +226,52 @@ export const ExecutiveDashboard: React.FC = () => {
           )}
           <p className="text-xs font-semibold text-text-secondary uppercase mt-2 tracking-wider">Most Active Department</p>
           <p className="text-[10px] text-text-secondary mt-1 max-w-[240px]">Department harboring the highest total volume of workflows registered this term.</p>
+        </Card>
+
+        {/* KPI 4: Average Fleet Speed */}
+        <Card className="p-6 bg-bg-elevated/45 backdrop-blur-sm border-brand-border">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 rounded-lg bg-bg-base border border-brand-border text-brand-gold">
+              <Gauge className="w-5 h-5" />
+            </div>
+            <span className="text-[9px] font-mono font-bold text-neutral-400 uppercase bg-neutral-800/40 px-1.5 py-0.5 rounded border border-brand-border">
+              Fleet Index
+            </span>
+          </div>
+          {loading ? (
+            <div className="h-9 w-24 bg-neutral-800/40 animate-pulse rounded" />
+          ) : (
+            <p className="text-3xl font-bold text-text-primary tracking-tight">
+              {telemetryMetrics.avgSpeed} <span className="text-sm font-semibold text-text-secondary">km/h</span>
+            </p>
+          )}
+          <p className="text-xs font-semibold text-text-secondary uppercase mt-1 tracking-wider">Average Fleet Speed</p>
+          <p className="text-[10px] text-text-secondary mt-1 max-w-[240px]">Mean recorded speed of active logistical vehicles across road units.</p>
+        </Card>
+
+        {/* KPI 5: Speeding Alerts */}
+        <Card className="p-6 bg-bg-elevated/45 backdrop-blur-sm border-brand-border">
+          <div className="flex items-center justify-between mb-4">
+            <div className={`p-2 rounded-lg bg-bg-base border ${telemetryMetrics.highSpeedIncidents > 0 ? 'border-red-500/20 text-red-500' : 'border-brand-border text-text-secondary'}`}>
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <span className={`text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border ${
+              telemetryMetrics.highSpeedIncidents > 0 
+                ? 'bg-red-500/10 text-red-500 border-red-500/15 animate-pulse' 
+                : 'bg-neutral-800/40 text-neutral-400 border-brand-border'
+            }`}>
+              Safety Alert
+            </span>
+          </div>
+          {loading ? (
+            <div className="h-9 w-40 bg-neutral-800/40 animate-pulse rounded" />
+          ) : (
+            <p className={`text-3xl font-bold tracking-tight ${telemetryMetrics.highSpeedIncidents > 0 ? 'text-red-500' : 'text-text-primary'}`}>
+              {telemetryMetrics.highSpeedIncidents}
+            </p>
+          )}
+          <p className="text-xs font-semibold text-text-secondary uppercase mt-1 tracking-wider">High Speed Incidents</p>
+          <p className="text-[10px] text-text-secondary mt-1 max-w-[240px]">Number of logged telemetry entries exceeding the 110 km/h company threshold.</p>
         </Card>
 
       </div>
@@ -353,6 +403,101 @@ export const ExecutiveDashboard: React.FC = () => {
         </Card>
 
       </div>
+
+      {/* Fleet Velocity & Compliance Infographic */}
+      <Card className="p-6 sm:p-8 border-brand-border bg-bg-elevated/45 mb-8">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Fleet Velocity & Compliance Tracker</h3>
+            <p className="text-xs text-text-secondary mt-1">
+              Time-series index of active road team velocities relative to safety limits.
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-brand-gold">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-gold"></span> Dynamic Speed (km/h)
+            </span>
+            <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-red-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Safety Limit (110 km/h)
+            </span>
+          </div>
+        </div>
+
+        <div className="h-[280px] w-full min-h-[280px] flex items-center justify-center">
+          {loading ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-6 h-6 border-2 border-brand-gold border-t-transparent animate-spin rounded-full" />
+              <span className="text-xs font-mono text-text-secondary uppercase">Mapping speed matrix...</span>
+            </div>
+          ) : mounted && telemetry.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+              <AreaChart data={telemetry} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorSpeed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#c5a059" stopOpacity={0.25}/>
+                    <stop offset="95%" stopColor="#c5a059" stopOpacity={0.00}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" opacity={0.04} />
+                <XAxis 
+                  dataKey="time" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 9, fontWeight: 500, fill: '#aaa' }} 
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fill: '#888' }}
+                  label={{ value: 'Velocity (km/h)', angle: -90, position: 'insideLeft', style: { fill: '#777', fontSize: 10, fontWeight: 600 } }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1c1917', 
+                    border: '1px solid #2e2a24',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    color: '#fff'
+                  }}
+                  formatter={(value: any, nameKey: any, props: any) => {
+                    if (props.name === "speed") {
+                      return [`${value} km/h`, `Velocity (${props.payload.name})`];
+                    }
+                    return [`${value} km/h`, "Safety Limit"];
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="speed" 
+                  stroke="#c5a059" 
+                  strokeWidth={2}
+                  fillOpacity={1} 
+                  fill="url(#colorSpeed)" 
+                />
+                {/* Reference line for speed limit */}
+                <Area
+                  type="monotone"
+                  dataKey={() => 110}
+                  name="limit"
+                  stroke="#ef4444"
+                  strokeDasharray="5 5"
+                  strokeWidth={1}
+                  fill="none"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center p-8 text-text-secondary">
+              <Activity className="w-8 h-8 text-brand-gold/40 mb-2 animate-pulse" />
+              <span className="text-[10px] font-mono uppercase tracking-widest">No Active Telemetry Streams</span>
+              <p className="text-[10px] text-text-secondary/70 max-w-sm mt-1">
+                Drivers on route will establish live geo-telemetry coordinates mapping to compliance tracking charts.
+              </p>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* PHASE 5: Personnel Performance Matrix */}
       <Card className="border-brand-border bg-bg-elevated/45 overflow-hidden">

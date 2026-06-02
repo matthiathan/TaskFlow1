@@ -14,13 +14,14 @@ import {
   Navigation,
   MapPin,
   Users,
-  BarChart3
+  BarChart3,
+  Activity
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
 import { InstallAppBanner } from './InstallAppBanner';
- 
+  
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['user', 'tech', 'admin', 'road_tech', 'exec'] },
   { icon: CheckSquare, label: 'Tasks', path: '/tasks', roles: ['user', 'tech', 'admin', 'ops_manager', 'road_tech', 'exec'] },
@@ -28,6 +29,7 @@ const navItems = [
   { icon: ClipboardList, label: 'Service Tickets', path: '/reporting', roles: ['tech', 'admin', 'road_tech'] },
   { icon: Navigation, label: 'Route Planning', path: '/route-planning', roles: ['ops_manager'] },
   { icon: Users, label: 'Tech Tracking', path: '/tech-tracking', roles: ['admin', 'ops_manager'] },
+  { icon: Activity, label: 'Driver Analytics', path: '/driver-analytics', roles: ['admin', 'ops_manager'] },
   { icon: MapPin, label: 'My Routes', path: '/my-routes', roles: ['road_tech'] },
   { icon: BarChart3, label: 'Executive Analytics', path: '/analytics', roles: ['admin', 'exec'] },
   { icon: MessageSquare, label: 'Communications', path: '/chat', roles: ['user', 'tech', 'admin', 'road_tech', 'exec'] },

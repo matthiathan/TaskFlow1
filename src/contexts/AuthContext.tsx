@@ -42,31 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  // Inactivity Logout (10 minutes)
-  useEffect(() => {
-    if (!user) return;
 
-    let timeout: NodeJS.Timeout;
-
-    const resetTimer = () => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        logout();
-      }, 10 * 60 * 1000); // 10 minutes
-    };
-
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
-    
-    const activityHandler = () => resetTimer();
-
-    events.forEach(event => document.addEventListener(event, activityHandler));
-    resetTimer();
-
-    return () => {
-      if (timeout) clearTimeout(timeout);
-      events.forEach(event => document.removeEventListener(event, activityHandler));
-    };
-  }, [user]);
 
   const fetchProfile = async (userId: string, authUser?: any) => {
     try {

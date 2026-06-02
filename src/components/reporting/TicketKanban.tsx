@@ -3,7 +3,9 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { motion, AnimatePresence } from 'motion/react';
 import { Ticket, TicketStatus } from '../../types/database';
 import { cn } from '../../lib/utils';
-import { GripVertical, Hash, Camera, QrCode, Clock } from 'lucide-react';
+import { GripVertical, Hash, Camera, QrCode, Clock, X } from 'lucide-react';
+
+import { toast } from 'sonner';
 
 interface TicketKanbanProps {
   tickets: Ticket[];
@@ -48,18 +50,34 @@ const TicketCard: React.FC<{
           {isAdminOrTech && (
             <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity z-10">
               <button 
+                type="button"
                 onClick={(e) => { e.stopPropagation(); onEdit?.(ticket); }}
                 className="p-1.5 bg-bg-elevated hover:bg-brand-gold hover:text-white rounded-lg border border-brand-border hover:border-brand-gold transition-colors text-text-secondary"
                 title="Edit Ticket"
               >
                 <Hash className="w-3.5 h-3.5" />
               </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onDelete?.(ticket.id); }}
-                className="p-1.5 bg-bg-elevated hover:bg-red-500 hover:text-white rounded-lg border border-brand-border hover:border-red-500 transition-colors text-text-secondary"
-                title="Delete Ticket"
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  // Corporate safeguard to prevent accidental archival
+                  // Replaced window.confirm with toast action to ensure it works inside sandboxed iframes
+                  toast('Are you sure you want to move this service ticket to the system archive?', {
+                    action: {
+                      label: 'Confirm Archive',
+                      onClick: () => onDelete?.(ticket.id)
+                    },
+                    cancel: {
+                      label: 'Cancel',
+                      onClick: () => {}
+                    }
+                  });
+                }}
+                className="p-1.5 text-text-secondary hover:bg-red-500/10 hover:text-red-500 rounded-md transition-colors focus:outline-none"
+                title="Archive Service Ticket"
               >
-                <div className="w-3.5 h-3.5 flex items-center justify-center font-bold">X</div>
+                <X className="w-4 h-4" />
               </button>
             </div>
           )}

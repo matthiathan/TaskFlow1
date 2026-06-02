@@ -6,7 +6,7 @@ import { Archive, RefreshCcw, AlertTriangle, Clock } from 'lucide-react';
 interface ArchivedTicket {
   id: string;
   title: string;
-  description: string;
+  issue_description: string;
   deleted_at: string;
   assigned_to: string | null;
 }
@@ -23,7 +23,7 @@ export const TicketArchiveMenu: React.FC = () => {
       
       const { data, error } = await supabase
         .from('tickets')
-        .select('id, title, description, deleted_at, assigned_to')
+        .select('id, title, issue_description, deleted_at, assigned_to')
         .not('deleted_at', 'is', null)
         .gte('deleted_at', thirtyDaysAgo.toISOString())
         .order('deleted_at', { ascending: false });

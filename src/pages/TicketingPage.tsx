@@ -142,12 +142,10 @@ export const TicketingPage: React.FC = () => {
   };
 
   const handleDeleteTicket = async (id: string) => {
-    if (window.confirm('Are you sure you want to move this operational record to the system archive?')) {
-      try {
-        await deleteTicket(id);
-      } catch (err) {
-        // error handling inside hook
-      }
+    try {
+      await deleteTicket(id);
+    } catch (err) {
+      // error handling inside hook
     }
   };
 

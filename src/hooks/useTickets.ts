@@ -9,24 +9,22 @@ export const useTickets = () => {
 
   const fetchTickets = useCallback(async () => {
     try {
-      setLoading(true);
-
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
-        .is('deleted_at', null)
+        .is('deleted_at', null) // This line is mandatory to hide soft-deleted tickets
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setTickets(data || []);
     } catch (err: any) {
-      toast.error(`System Failure: ${err.message}`);
-    } finally {
-      setLoading(false);
+      toast.error('Failed to load tickets: ' + err.message);
     }
   }, []);
 
   useEffect(() => {
+    // Enterprise architecture: Centralized realtime subscription for operational ticketing datastores.
+    // Establishes a single websocket connection to prevent connection collision.
     const channel = supabase
       .channel('public:tickets')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, (payload) => {
@@ -37,7 +35,18 @@ export const useTickets = () => {
             return prev;
           });
         } else if (payload.eventType === 'UPDATE') {
-          setTickets(prev => prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new as Ticket } : t));
+          const updatedTicket = payload.new as Ticket;
+          setTickets(prev => {
+            if (updatedTicket.deleted_at !== null) {
+              return prev.filter(t => t.id !== updatedTicket.id);
+            }
+            const exists = prev.some(t => t.id === updatedTicket.id);
+            if (exists) {
+              return prev.map(t => t.id === updatedTicket.id ? { ...t, ...updatedTicket } : t);
+            }
+            // If it was restored from archive, we might need to add it:
+            return [updatedTicket, ...prev];
+          });
         } else if (payload.eventType === 'DELETE') {
           setTickets(prev => prev.filter(t => t.id !== payload.old.id));
         }

@@ -14,7 +14,8 @@ export interface Task {
   deleted_at?: string | null;
 }
 
-export type Role = 'user' | 'tech' | 'admin' | 'ops_manager' | 'road_tech';
+export type Role = 'user' | 'tech' | 'admin' | 'ops_manager' | 'road_tech' | 'exec';
+export type Department = 'warehouse' | 'road_techs' | 'techs' | 'marketing' | 'finance' | 'it';
 
 export interface Profile {
   id: string;
@@ -22,6 +23,7 @@ export interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   role: Role;
+  department?: Department;
   created_at: string;
 }
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Profile, Role, TaskPriority } from '../types/database';
+import { Profile, Role, Department } from '../types/database';
 import { Card, Button, Input } from '../components/ui/Base';
 import { 
   ShieldCheck, 
@@ -15,11 +15,22 @@ import {
   Mail,
   User as UserIcon,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Edit2,
+  Building2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { TicketArchiveMenu } from '../components/reporting/TicketArchiveMenu';
+
+const DEPARTMENTS = [
+  { value: 'warehouse', label: 'Warehouse Logistics' },
+  { value: 'road_techs', label: 'Road Technicians' },
+  { value: 'techs', label: 'In-House Technicians' },
+  { value: 'marketing', label: 'Sales & Marketing' },
+  { value: 'finance', label: 'Corporate Finance' },
+  { value: 'it', label: 'IT Support & Systems' }
+];
 
 export const AdminPage: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -27,12 +38,20 @@ export const AdminPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState<{id: string, name: string} | null>(null);
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     full_name: '',
-    role: 'user' as Role
+    role: 'user' as Role,
+    department: 'warehouse' as Department
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    full_name: '',
+    role: 'user' as Role,
+    department: '' as Department | ''
   });
 
   const [resetPassword, setResetPassword] = useState('');
@@ -63,6 +82,7 @@ export const AdminPage: React.FC = () => {
         full_name: u.user_metadata?.full_name || u.email.split('@')[0],
         avatar_url: u.user_metadata?.avatar_url || null,
         role: u.user_metadata?.role || 'user',
+        department: u.user_metadata?.department || undefined,
         created_at: u.created_at
       })).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
@@ -89,10 +109,47 @@ export const AdminPage: React.FC = () => {
 
       toast.success('Personnel Enrolled Successfully');
       setShowCreateModal(false);
-      setFormData({ email: '', password: '', full_name: '', role: 'user' });
+      setFormData({ email: '', password: '', full_name: '', role: 'user', department: 'warehouse' });
       fetchProfiles();
     } catch (err: any) {
       toast.error(`Enrollment Failed: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleOpenEditModal = (profile: Profile) => {
+    setEditingProfile(profile);
+    setEditFormData({
+      full_name: profile.full_name || '',
+      role: profile.role,
+      department: profile.department || ''
+    });
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProfile) return;
+    setActionLoading('update');
+    try {
+      const response = await fetch(`/api/admin/users/${editingProfile.id}`, {
+        method: 'PATCH',
+        headers: await getHeaders(),
+        body: JSON.stringify({
+          full_name: editFormData.full_name,
+          role: editFormData.role,
+          department: editFormData.department || null
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast.success('Personnel Profile Updated Successfully');
+      setEditingProfile(null);
+      fetchProfiles();
+    } catch (err: any) {
+      toast.error(`Update Failed: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
@@ -197,7 +254,7 @@ export const AdminPage: React.FC = () => {
               <thead>
                 <tr className="bg-bg-elevated/50 border-b border-brand-border">
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Personnel</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Clearance</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Clearance & Department</th>
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Status</th>
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary text-right">Administrative Actions</th>
                 </tr>
@@ -217,7 +274,7 @@ export const AdminPage: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-brand-gold/10 border border-brand-border flex items-center justify-center overflow-hidden">
                           {profile.avatar_url ? (
-                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
                             <UserIcon className="w-5 h-5 text-brand-gold" />
                           )}
@@ -229,22 +286,37 @@ export const AdminPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5">
-                        {(['user', 'tech', 'admin', 'ops_manager', 'road_tech'] as Role[]).map((r) => (
-                          <button
-                            key={r}
-                            onClick={() => updateRole(profile.id, r)}
-                            disabled={profile.role === r || actionLoading === profile.id}
-                            className={cn(
-                              "px-2 py-1 text-[8px] font-black uppercase rounded border transition-all",
-                              profile.role === r 
-                                ? r === 'admin' || r === 'ops_manager' ? "bg-red-500 text-white border-red-500" : "bg-brand-gold text-white border-brand-gold"
-                                : "text-text-secondary border-brand-border hover:border-brand-gold hover:text-brand-gold"
-                            )}
-                          >
-                            {r.replace('_', ' ')}
-                          </button>
-                        ))}
+                      <div className="flex flex-col gap-1.5 justify-center">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {(['user', 'tech', 'exec', 'admin', 'ops_manager', 'road_tech'] as Role[]).map((r) => (
+                            <button
+                              key={r}
+                              onClick={() => updateRole(profile.id, r)}
+                              disabled={profile.role === r || actionLoading === profile.id}
+                              className={cn(
+                                "px-1.5 py-0.5 text-[8px] font-black uppercase rounded border transition-all",
+                                profile.role === r 
+                                  ? r === 'admin' || r === 'ops_manager' ? "bg-red-500 text-white border-red-500" : "bg-brand-gold text-white border-brand-gold"
+                                  : "text-text-secondary border-brand-border hover:border-brand-gold hover:text-brand-gold"
+                              )}
+                            >
+                              {r.replace('_', ' ')}
+                            </button>
+                          ))}
+                        </div>
+                        <div>
+                          {profile.department ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-bold uppercase rounded-md bg-brand-gold/10 text-brand-gold border border-brand-gold/20">
+                              <Building2 className="w-3 h-3 text-brand-gold" />
+                              {DEPARTMENTS.find(d => d.value === profile.department)?.label || profile.department.replace('_', ' ')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-bold uppercase rounded-md bg-[#25221e] text-text-secondary border border-brand-border/40">
+                              <Building2 className="w-3 h-3 text-text-secondary opacity-60" />
+                              No Department Assigned
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -254,6 +326,13 @@ export const AdminPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleOpenEditModal(profile)}
+                          className="p-2 bg-bg-elevated border border-brand-border rounded-lg text-text-secondary hover:text-brand-gold hover:border-brand-gold transition-all"
+                          title="Edit Personal Profile"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => setShowResetModal({ id: profile.id, name: profile.full_name || profile.email })}
                           className="p-2 bg-bg-elevated border border-brand-border rounded-lg text-text-secondary hover:text-brand-gold hover:border-brand-gold transition-all"
@@ -322,19 +401,36 @@ export const AdminPage: React.FC = () => {
                 placeholder="••••••••"
                 required
               />
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Security Clearance</label>
-                <select 
-                  className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-gold transition-all"
-                  value={formData.role}
-                  onChange={e => setFormData(p => ({ ...p, role: e.target.value as Role }))}
-                >
-                  <option value="user">USER - Standard</option>
-                  <option value="tech">TECH - Field Access</option>
-                  <option value="ops_manager">OPS MANAGER - Fleet Route Planner</option>
-                  <option value="road_tech">ROAD TECH - Field Driver Itinerary</option>
-                  <option value="admin">ADMIN - Global Override</option>
-                </select>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Security Clearance</label>
+                  <select 
+                    className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-gold transition-all"
+                    value={formData.role}
+                    onChange={e => setFormData(p => ({ ...p, role: e.target.value as Role }))}
+                  >
+                    <option value="user">USER - Standard</option>
+                    <option value="tech">TECH - Field Access</option>
+                    <option value="exec">EXEC - Corporate Analytics</option>
+                    <option value="ops_manager">OPS MANAGER - Fleet Route Planner</option>
+                    <option value="road_tech">ROAD TECH - Field Driver Itinerary</option>
+                    <option value="admin">ADMIN - Global Override</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Department Assignment</label>
+                  <select 
+                    className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-gold transition-all"
+                    value={formData.department}
+                    onChange={e => setFormData(p => ({ ...p, department: e.target.value as Department }))}
+                  >
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept.value} value={dept.value}>{dept.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <Button 
@@ -344,6 +440,87 @@ export const AdminPage: React.FC = () => {
               >
                 Establish Credentials
               </Button>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Profile Edit Modal */}
+      {editingProfile && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="w-full max-w-md p-8 bg-bg-elevated border-brand-gold/30 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-brand-gold/10 rounded-xl">
+                  <Edit2 className="w-5 h-5 text-brand-gold" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-text-primary">Edit Profile</h3>
+                  <p className="text-[10px] font-bold text-text-secondary uppercase">{editingProfile.email}</p>
+                </div>
+              </div>
+              <button onClick={() => setEditingProfile(null)} className="text-text-secondary hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProfile} className="space-y-5">
+              <Input 
+                label="Full Name"
+                icon={<UserIcon className="w-4 h-4" />}
+                value={editFormData.full_name}
+                onChange={e => setEditFormData(p => ({ ...p, full_name: e.target.value }))}
+                placeholder="Agent full name..."
+                required
+              />
+
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Security Clearance</label>
+                <select 
+                  className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-gold transition-all"
+                  value={editFormData.role}
+                  onChange={e => setEditFormData(p => ({ ...p, role: e.target.value as Role }))}
+                >
+                  <option value="user">USER - Standard</option>
+                  <option value="tech">TECH - Field Access</option>
+                  <option value="exec">EXEC - Corporate Analytics</option>
+                  <option value="ops_manager">OPS MANAGER - Fleet Route Planner</option>
+                  <option value="road_tech">ROAD TECH - Field Driver Itinerary</option>
+                  <option value="admin">ADMIN - Global Override</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Department Assignment</label>
+                <select 
+                  className="w-full bg-bg-base border border-brand-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-gold transition-all"
+                  value={editFormData.department}
+                  onChange={e => setEditFormData(p => ({ ...p, department: e.target.value as Department }))}
+                >
+                  <option value="">Unassigned</option>
+                  {DEPARTMENTS.map((dept) => (
+                    <option key={dept.value} value={dept.value}>{dept.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  type="button"
+                  variant="secondary" 
+                  onClick={() => setEditingProfile(null)}
+                  className="flex-grow py-3 uppercase text-[9px] font-black"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  isLoading={actionLoading === 'update'}
+                  className="flex-[2] py-3 uppercase text-[9px] font-black"
+                >
+                  Save Changes
+                </Button>
+              </div>
             </form>
           </Card>
         </div>

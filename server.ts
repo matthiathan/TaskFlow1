@@ -308,17 +308,24 @@ async function startServer() {
   });
 
   apiRouter.post("/admin/users", adminAuth, async (req, res) => {
-    const { email, password, full_name, role } = req.body;
+    const { email, password, full_name, role, department } = req.body;
     try {
       const { data: { user }, error } = await supabaseAdmin.auth.admin.createUser({
-        email, password, email_confirm: true, user_metadata: { full_name, role }
+        email, password, email_confirm: true, user_metadata: { full_name, role, department }
       });
       if (error) throw error;
-      if (role || full_name) {
+      if (role || full_name || department) {
         let dbRole = role;
         if (role === 'ops_manager') dbRole = 'admin';
         if (role === 'road_tech') dbRole = 'tech';
-        await supabaseAdmin.from('profiles').update({ full_name, role: dbRole }).eq('id', user?.id);
+        if (role === 'exec') dbRole = 'user';
+        const pUpdate: any = { full_name, role: dbRole };
+        if (department) pUpdate.department = department;
+        try {
+          await supabaseAdmin.from('profiles').update(pUpdate).eq('id', user?.id);
+        } catch (dbErr: any) {
+          console.warn('Database profiles department sync failed (column might be missing):', dbErr.message);
+        }
       }
       res.json({ user });
     } catch (error: any) {
@@ -328,25 +335,41 @@ async function startServer() {
 
   apiRouter.patch("/admin/users/:id", adminAuth, async (req: any, res: any) => {
     const { id } = req.params;
-    const { password, full_name, role } = req.body;
+    const { password, full_name, role, department } = req.body;
     try {
       const updateData: any = {};
       if (password) updateData.password = password;
-      if (full_name || role) updateData.user_metadata = { full_name, role };
+      
+      // Merge user_metadata
+      const { data: { user: currentUser } } = await supabaseAdmin.auth.admin.getUserById(id);
+      const currentMeta = currentUser?.user_metadata || {};
+      const newMeta = { ...currentMeta };
+      if (full_name !== undefined) newMeta.full_name = full_name;
+      if (role !== undefined) newMeta.role = role;
+      if (department !== undefined) newMeta.department = department;
+      updateData.user_metadata = newMeta;
 
       const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, updateData);
       if (error) throw error;
 
-      if (full_name || role) {
+      if (full_name !== undefined || role !== undefined || department !== undefined) {
         const pUpdate: any = {};
-        if (full_name) pUpdate.full_name = full_name;
-        if (role) {
+        if (full_name !== undefined) pUpdate.full_name = full_name;
+        if (role !== undefined) {
           let dbRole = role;
           if (role === 'ops_manager') dbRole = 'admin';
           if (role === 'road_tech') dbRole = 'tech';
+          if (role === 'exec') dbRole = 'user';
           pUpdate.role = dbRole;
         }
-        await supabaseAdmin.from('profiles').update(pUpdate).eq('id', id);
+        if (department !== undefined) {
+          pUpdate.department = department;
+        }
+        try {
+          await supabaseAdmin.from('profiles').update(pUpdate).eq('id', id);
+        } catch (dbErr: any) {
+          console.warn('Database profiles department update failed:', dbErr.message);
+        }
       }
       res.json({ data });
     } catch (error: any) {

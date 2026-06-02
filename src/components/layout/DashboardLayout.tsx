@@ -16,6 +16,7 @@ import { SettingsPage } from '../../pages/SettingsPage';
 import { RoutePlanningPage } from '../../pages/RoutePlanningPage';
 import { MyRoutesPage } from '../../pages/MyRoutesPage';
 import { TechTrackingPage } from '../../pages/TechTrackingPage';
+import { ExecutiveDashboard } from '../../pages/ExecutiveDashboard';
 
 export function DashboardLayout() {
   const { role } = useAuth();
@@ -69,6 +70,7 @@ export function DashboardLayout() {
           <Route path="/route-planning" element={role === 'ops_manager' || role === 'admin' ? <RoutePlanningPage /> : <Navigate to="/" replace />} />
           <Route path="/tech-tracking" element={role === 'ops_manager' || role === 'admin' ? <TechTrackingPage /> : <Navigate to="/" replace />} />
           <Route path="/my-routes" element={role === 'road_tech' || role === 'admin' ? <MyRoutesPage /> : <Navigate to="/" replace />} />
+          <Route path="/analytics" element={role === 'admin' || role === 'exec' ? <ExecutiveDashboard /> : <Navigate to="/" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -2,6 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import './pwa';
 
 // Swallow benign WebSocket/HMR errors in the AIS preview environment
 window.addEventListener('unhandledrejection', (event) => {

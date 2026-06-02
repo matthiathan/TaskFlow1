@@ -19,6 +19,7 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
+import { InstallAppBanner } from './InstallAppBanner';
  
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['user', 'tech', 'admin', 'road_tech', 'exec'] },
@@ -57,7 +58,7 @@ export const Sidebar: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
 
       {/* Scrollable Nav Area */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1 scrollbar-thin scrollbar-thumb-brand-border scrollbar-track-transparent">
-        <nav className="space-y-1">
+        <nav className="space-y-1 mb-4">
           {allowedItems.map((item) => (
             <NavLink
               key={item.path}
@@ -79,6 +80,9 @@ export const Sidebar: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
             </NavLink>
           ))}
         </nav>
+        <div className="px-2">
+          <InstallAppBanner />
+        </div>
       </div>
 
       {/* Static Footer */}

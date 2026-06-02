@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { toast } from 'sonner';
 
 export function useFleetTelemetry() {
   const { user, role } = useAuth();
-  const lastUpdateRef = useRef<number>(0);
   const watchIdRef = useRef<number | null>(null);
+  const lastToastSuccessRef = useRef<boolean>(false);
 
   useEffect(() => {
     // Only track location if the user is a road_tech
@@ -17,23 +18,22 @@ export function useFleetTelemetry() {
       return;
     }
 
+    toast.info('Telemetry active. Finding satellites...');
+
     if (!('geolocation' in navigator)) {
-      console.warn('Geolocation is not supported by this browser.');
+      toast.error('Hardware Blocked: Geolocation is not supported by this browser.');
       return;
     }
 
     const handleSuccess = async (position: GeolocationPosition) => {
-      const now = Date.now();
-      // Throttle to only insert once every 30 seconds
-      if (now - lastUpdateRef.current < 30000) {
-        return;
-      }
-
       const { latitude, longitude, speed } = position.coords;
       // Convert native speed (m/s) to km/h (multiply by 3.6). If speed is null/negative, default to 0.
       const speed_kmh = speed && speed > 0 ? speed * 3.6 : 0;
 
-      lastUpdateRef.current = now;
+      if (!lastToastSuccessRef.current) {
+        toast.success('GPS Lock Acquired!');
+        lastToastSuccessRef.current = true;
+      }
 
       try {
         const { error } = await supabase
@@ -47,20 +47,20 @@ export function useFleetTelemetry() {
           });
 
         if (error) {
-          console.error('Failed to upload telemetry log:', error.message);
+          toast.error('Database Blocked: ' + error.message);
         }
-      } catch (err) {
-        console.error('Error uploading telemetry log:', err);
+      } catch (err: any) {
+        toast.error('Database Blocked: ' + (err.message || 'Unknown error'));
       }
     };
 
     const handleError = (error: GeolocationPositionError) => {
-      console.error('Geolocation tracking error:', error.message);
+      toast.error('Hardware Blocked: ' + error.message);
     };
 
     const options: PositionOptions = {
       enableHighAccuracy: true,
-      timeout: 15000,
+      timeout: 25000,
       maximumAge: 0
     };
 
@@ -73,6 +73,7 @@ export function useFleetTelemetry() {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
+      lastToastSuccessRef.current = false;
     };
   }, [user, role]);
 }

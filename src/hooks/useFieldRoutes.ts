@@ -97,21 +97,11 @@ export const useFieldRoutes = () => {
     task_description: string;
     scheduled_time: string;
   }) => {
-    let creatorId: string | null = null;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      creatorId = session?.user?.id || null;
-    } catch (authErr) {
-      console.warn('Auth check failed:', authErr);
-    }
-
-    const createdBy = creatorId || routeData.road_tech_id;
     const newRouteId = crypto.randomUUID();
     const newRoute: FieldRoute = {
       id: newRouteId,
       created_at: new Date().toISOString(),
       road_tech_id: routeData.road_tech_id,
-      created_by: createdBy,
       client_name: routeData.client_name,
       client_location: routeData.client_location,
       task_description: routeData.task_description,
@@ -137,7 +127,6 @@ export const useFieldRoutes = () => {
         .insert([{
           id: newRouteId,
           road_tech_id: routeData.road_tech_id,
-          created_by: createdBy,
           client_name: routeData.client_name,
           client_location: routeData.client_location,
           task_description: routeData.task_description,

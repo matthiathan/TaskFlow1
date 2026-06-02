@@ -41,6 +41,9 @@ export default defineConfig(({mode}) => {
               purpose: 'any maskable'
             }
           ]
+        },
+        workbox: {
+          globIgnores: ['**/OneSignalSDKWorker.js']
         }
       })
     ],

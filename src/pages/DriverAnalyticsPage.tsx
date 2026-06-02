@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import MarkerClusterGroup from 'react-leaflet-markercluster';
 import { supabase } from '../lib/supabase';
 import { Profile, TelemetryLog } from '../types/database';
 import { 
@@ -72,7 +73,7 @@ export const DriverAnalyticsPage: React.FC = () => {
   const [mapCenter, setMapCenter] = useState<[number, number]>([-26.2041, 28.0473]); // Johannesburg default
   const [mapZoom, setMapZoom] = useState(6);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setRefreshing(true);
       // 1. Fetch profiles to match technician details
@@ -112,7 +113,6 @@ export const DriverAnalyticsPage: React.FC = () => {
       // If we have active points, center the map around the first active tech
       if (uniqueTelemetry.length > 0) {
         setMapCenter([uniqueTelemetry[0].latitude, uniqueTelemetry[0].longitude]);
-        setMapZoom(11);
       }
     } catch (err) {
       console.error('Error fetching fleet telemetry:', err);
@@ -120,15 +120,23 @@ export const DriverAnalyticsPage: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
 
-    // Set up auto-refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    // Subscribe to new telemetry inserts
+    const channel = supabase
+      .channel('telemetry_live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'driver_telemetry' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchData]);
 
   // Filter techs by search keywords (name, department, email)
   const filteredTelemetry = telemetry.filter((item) => {
@@ -259,45 +267,47 @@ export const DriverAnalyticsPage: React.FC = () => {
             <MapController center={mapCenter} zoom={mapZoom} />
 
             {/* Render markers for each road tech */}
-            {filteredTelemetry.map((item) => (
-              <Marker
-                key={item.id}
-                position={[item.latitude, item.longitude]}
-                icon={createMarkerIcon(item.speed_kmh)}
-              >
-                <Popup className="custom-leaflet-popup">
-                  <div className="p-1 text-xs space-y-2 select-none min-w-[200px]">
-                    <div className="flex items-center gap-1.5 border-b border-brand-border/30 pb-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                      <span className="font-bold text-gray-900">
-                        {item.profile?.full_name || item.profile?.email || 'Field Driver'}
-                      </span>
+            <MarkerClusterGroup>
+              {filteredTelemetry.map((item) => (
+                <Marker
+                  key={item.id}
+                  position={[item.latitude, item.longitude]}
+                  icon={createMarkerIcon(item.speed_kmh)}
+                >
+                  <Popup className="custom-leaflet-popup">
+                    <div className="p-1 text-xs space-y-2 select-none min-w-[200px]">
+                      <div className="flex items-center gap-1.5 border-b border-brand-border/30 pb-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                        <span className="font-bold text-gray-900">
+                          {item.profile?.full_name || item.profile?.email || 'Field Driver'}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-gray-600">
+                          <span className="flex items-center gap-1 text-[10px]"><Gauge className="w-3.5 h-3.5" /> Speed</span>
+                          <span className={`font-mono font-bold ${item.speed_kmh > 110 ? 'text-red-600' : 'text-gray-900'}`}>
+                            {Math.round(item.speed_kmh)} km/h
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-gray-600">
+                          <span className="flex items-center gap-1 text-[10px]"><Clock className="w-3.5 h-3.5" /> Updated</span>
+                          <span className="text-[10px] font-semibold text-gray-700">
+                            {formatDistanceToNow(new Date(item.recorded_at))} ago
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-gray-600">
+                          <span className="flex items-center gap-1 text-[10px]"><MapPin className="w-3.5 h-3.5" /> Geolocation</span>
+                          <span className="text-[9px] font-mono font-semibold text-gray-500">
+                            {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-gray-600">
-                        <span className="flex items-center gap-1 text-[10px]"><Gauge className="w-3.5 h-3.5" /> Speed</span>
-                        <span className={`font-mono font-bold ${item.speed_kmh > 110 ? 'text-red-600' : 'text-gray-900'}`}>
-                          {Math.round(item.speed_kmh)} km/h
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-600">
-                        <span className="flex items-center gap-1 text-[10px]"><Clock className="w-3.5 h-3.5" /> Updated</span>
-                        <span className="text-[10px] font-semibold text-gray-700">
-                          {formatDistanceToNow(new Date(item.recorded_at))} ago
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-600">
-                        <span className="flex items-center gap-1 text-[10px]"><MapPin className="w-3.5 h-3.5" /> Geolocation</span>
-                        <span className="text-[9px] font-mono font-semibold text-gray-500">
-                          {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+                  </Popup>
+                </Marker>
+              ))}
+            </MarkerClusterGroup>
           </MapContainer>
         </div>
 

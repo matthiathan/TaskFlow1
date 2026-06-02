@@ -25,6 +25,11 @@ import { cn } from '../lib/utils';
 
 export const DashboardPage: React.FC = () => {
   const { tasks } = useTasks();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const stats = [
     { label: 'Total Tasks', value: tasks.length, icon: Activity, color: 'text-brand-gold' },
@@ -86,38 +91,40 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div className="h-[300px] w-full min-h-[300px]">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart data={statusData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" opacity={0.1} />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 11, fontWeight: 500, fill: '#888' }} 
-                  dy={10}
-                />
-                <YAxis hide />
-                <Tooltip 
-                  cursor={{ fill: 'transparent' }}
-                  contentStyle={{ 
-                    backgroundColor: '#1c1917', 
-                    border: '1px solid #2e2a24',
-                    borderRadius: '8px',
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    color: '#fff'
-                  }}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={40}>
-                  {statusData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={index === 0 ? '#737373' : index === 1 ? '#c5a059' : '#22c55e'} 
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {mounted && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <BarChart data={statusData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" opacity={0.1} />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 11, fontWeight: 500, fill: '#888' }} 
+                    dy={10}
+                  />
+                  <YAxis hide />
+                  <Tooltip 
+                    cursor={{ fill: 'transparent' }}
+                    contentStyle={{ 
+                      backgroundColor: '#1c1917', 
+                      border: '1px solid #2e2a24',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      color: '#fff'
+                    }}
+                  />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={40}>
+                    {statusData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={index === 0 ? '#737373' : index === 1 ? '#c5a059' : '#22c55e'} 
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
@@ -126,22 +133,24 @@ export const DashboardPage: React.FC = () => {
           <Card className="p-8 border-brand-border bg-bg-elevated/45">
             <h3 className="text-sm font-bold text-text-primary mb-6">Task Priority Breakdown</h3>
             <div className="h-[200px] w-full relative min-h-[200px]">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <PieChart>
-                  <Pie
-                    data={priorityData}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={8}
-                    dataKey="value"
-                  >
-                    {priorityData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {mounted && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <PieChart>
+                    <Pie
+                      data={priorityData}
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={8}
+                      dataKey="value"
+                    >
+                      {priorityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <ShieldCheck className="w-6 h-6 text-brand-gold mb-1" />
                 <span className="text-xs font-semibold text-text-secondary">Overview</span>

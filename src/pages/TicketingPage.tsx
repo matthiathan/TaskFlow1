@@ -45,6 +45,12 @@ import {
 
 export const TicketingPage: React.FC = () => {
   const { tickets, loading, fetchTickets, submitTicket, updateTicketStatus, updateTicket, deleteTicket } = useTickets();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { role } = useAuth();
   const isAdminOrTech = role === 'admin' || role === 'tech';
   
@@ -106,6 +112,8 @@ export const TicketingPage: React.FC = () => {
     }));
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.issue_description || !formData.serial_number) {
@@ -113,17 +121,39 @@ export const TicketingPage: React.FC = () => {
       return;
     }
 
-    try {
-      if (editingTicketId) {
-        await updateTicket(editingTicketId, formData);
-      } else {
-        await submitTicket(formData);
+    setIsSubmitting(true);
+
+    const finalizeSubmit = async (lat: number | null, lng: number | null) => {
+      try {
+        if (editingTicketId) {
+          await updateTicket(editingTicketId, { ...formData }); // Only update form fields on edit to prevent changing location
+        } else {
+          await submitTicket({ ...formData, location_lat: lat, location_lng: lng });
+        }
+        resetForm();
+        setShowNewReport(false);
+        fetchTickets();
+      } catch (err) {
+        // Error handled in hook
+      } finally {
+        setIsSubmitting(false);
       }
-      resetForm();
-      setShowNewReport(false);
-      fetchTickets();
-    } catch (err) {
-      // Error handled in hook
+    };
+
+    if ('geolocation' in navigator && !editingTicketId) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          finalizeSubmit(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.warn('Geolocation failed:', error);
+          toast.info('Location could not be captured. Proceeding without location.');
+          finalizeSubmit(null, null);
+        },
+        { timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      finalizeSubmit(null, null);
     }
   };
 
@@ -374,32 +404,36 @@ export const TicketingPage: React.FC = () => {
               {/* Chart 1: Categorical Priority Distribution */}
               <div className="h-[200px] bg-bg-base/30 border border-brand-border/45 p-3 rounded-xl flex flex-col justify-between">
                 <span className="text-xs font-semibold text-text-secondary tracking-wider">Tickets by Severity Level</span>
-                <ResponsiveContainer width="99%" height="86%">
-                  <BarChart data={priorityChartData}>
-                    <XAxis dataKey="name" stroke="#888" fontSize={9} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888" fontSize={9} allowDecimals={false} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: '10px', borderRadius: '8px', color: '#fff' }} />
-                    <Bar dataKey="incidents" barSize={18} radius={[4, 4, 0, 0]}>
-                      {priorityChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                {mounted && (
+                  <ResponsiveContainer width="99%" height="86%">
+                    <BarChart data={priorityChartData}>
+                      <XAxis dataKey="name" stroke="#888" fontSize={9} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888" fontSize={9} allowDecimals={false} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: '10px', borderRadius: '8px', color: '#fff' }} />
+                      <Bar dataKey="incidents" barSize={18} radius={[4, 4, 0, 0]}>
+                        {priorityChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
 
               {/* Chart 2: Direct status pipelines */}
               <div className="h-[200px] bg-bg-base/30 border border-brand-border/45 p-3 rounded-xl flex flex-col justify-between">
                 <span className="text-xs font-semibold text-text-secondary tracking-wider">Service Diagnostics Pipeline</span>
-                <ResponsiveContainer width="99%" height="86%">
-                  <LineChart data={statusChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" opacity={0.15} />
-                    <XAxis dataKey="name" stroke="#888" fontSize={9} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888" fontSize={9} allowDecimals={false} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: '10px', borderRadius: '8px', color: '#fff' }} />
-                    <Line type="monotone" dataKey="count" stroke="#d97706" strokeWidth={2.5} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                {mounted && (
+                  <ResponsiveContainer width="99%" height="86%">
+                    <LineChart data={statusChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" opacity={0.15} />
+                      <XAxis dataKey="name" stroke="#888" fontSize={9} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888" fontSize={9} allowDecimals={false} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: '10px', borderRadius: '8px', color: '#fff' }} />
+                      <Line type="monotone" dataKey="count" stroke="#d97706" strokeWidth={2.5} activeDot={{ r: 5 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </div>
 
             </div>

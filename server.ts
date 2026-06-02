@@ -73,6 +73,35 @@ const adminAuth = async (req: any, res: any, next: any) => {
   }
 };
 
+// Ops/Admin Middleware: Verify requesting user is an admin or ops manager
+const opsOrAdminAuth = async (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: "No credentials" });
+
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    
+    if (error || !user) throw new Error("Invalid token");
+
+    // Check custom roles in public.profiles
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile || (profile.role !== 'admin' && profile.role !== 'ops_manager')) {
+      return res.status(403).json({ error: "Access Denied: Ops Manager or Admin Clearance Required" });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Authentication failed" });
+  }
+};
+
 // External API Middleware: Verify API Key from DB
 const externalAuth = async (req: any, res: any, next: any) => {
   const apiKey = req.headers['x-api-key'];
@@ -200,6 +229,73 @@ async function startServer() {
   apiRouter.get("/external/tasks", externalAuth, handleExternalTasks);
   apiRouter.get("/tasks", externalAuth, handleExternalTasks);
 
+  // Ops Tasks Endpoints (bypasses RLS limits using service role admin client)
+  apiRouter.post("/ops/tasks", opsOrAdminAuth, async (req, res) => {
+    const { id, title, priority, status, due_date, user_id } = req.body;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('tasks')
+        .insert([{
+          id: id || crypto.randomUUID(),
+          title,
+          priority,
+          status,
+          due_date,
+          user_id,
+          description: '',
+          collaborators: []
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json({ data });
+    } catch (error: any) {
+      console.error('[API ERROR] Ops Task insert:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  apiRouter.patch("/ops/tasks/:id", opsOrAdminAuth, async (req, res) => {
+    const { id } = req.params;
+    const { title, priority, status, due_date } = req.body;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('tasks')
+        .update({
+          title,
+          priority,
+          status,
+          due_date
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json({ data });
+    } catch (error: any) {
+      console.error('[API ERROR] Ops Task update:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  apiRouter.delete("/ops/tasks/:id", opsOrAdminAuth, async (req, res) => {
+    const { id } = req.params;
+    try {
+      const { error } = await supabaseAdmin
+        .from('tasks')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[API ERROR] Ops Task delete:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin Endpoints
   apiRouter.get("/admin/users", adminAuth, async (req, res) => {
     try {
@@ -219,7 +315,10 @@ async function startServer() {
       });
       if (error) throw error;
       if (role || full_name) {
-        await supabaseAdmin.from('profiles').update({ full_name, role }).eq('id', user?.id);
+        let dbRole = role;
+        if (role === 'ops_manager') dbRole = 'admin';
+        if (role === 'road_tech') dbRole = 'tech';
+        await supabaseAdmin.from('profiles').update({ full_name, role: dbRole }).eq('id', user?.id);
       }
       res.json({ user });
     } catch (error: any) {
@@ -241,7 +340,12 @@ async function startServer() {
       if (full_name || role) {
         const pUpdate: any = {};
         if (full_name) pUpdate.full_name = full_name;
-        if (role) pUpdate.role = role;
+        if (role) {
+          let dbRole = role;
+          if (role === 'ops_manager') dbRole = 'admin';
+          if (role === 'road_tech') dbRole = 'tech';
+          pUpdate.role = dbRole;
+        }
         await supabaseAdmin.from('profiles').update(pUpdate).eq('id', id);
       }
       res.json({ data });

@@ -25,14 +25,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check active sessions
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) fetchProfile(session.user.id, session.user);
       else setLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) fetchProfile(session.user.id, session.user);
       else {
         setProfile(null);
         setLoading(false);
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user]);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, authUser?: any) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -77,7 +77,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) throw error;
-      setProfile(data);
+      
+      const metaRole = authUser?.user_metadata?.role;
+      setProfile(data ? { ...data, role: metaRole || data.role } : null);
     } catch (err) {
       console.error('Error fetching profile:', err);
     } finally {

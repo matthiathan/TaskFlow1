@@ -14,7 +14,7 @@ export interface Task {
   deleted_at?: string | null;
 }
 
-export type Role = 'user' | 'tech' | 'admin';
+export type Role = 'user' | 'tech' | 'admin' | 'ops_manager' | 'road_tech';
 
 export interface Profile {
   id: string;
@@ -58,7 +58,12 @@ export interface Ticket {
   occurrence_time: string | null;
   machine_images: string[];
   user_id: string;
+  location_lat?: number | null;
+  location_lng?: number | null;
   deleted_at?: string | null;
+  profiles?: {
+    full_name: string | null;
+  };
 }
 
 export interface Asset {
@@ -69,3 +74,22 @@ export interface Asset {
   status: 'functional' | 'degraded' | 'offline';
   last_maintenance: string;
 }
+
+export type FieldRouteStatus = 'scheduled' | 'late' | 'arrived_on_time' | 'arrived_late' | 'no_arrival';
+
+export interface FieldRoute {
+  id: string;
+  created_at: string;
+  road_tech_id: string;
+  created_by?: string | null;
+  client_name: string;
+  client_location: string;
+  task_description: string;
+  scheduled_time: string;
+  status: FieldRouteStatus;
+  check_in_time?: string | null;
+  check_in_lat?: number | null;
+  check_in_lng?: number | null;
+  road_tech_profile?: Profile | null;
+}
+

@@ -13,6 +13,9 @@ import { CalendarPage } from '../../pages/CalendarPage';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { AdminPage } from '../../pages/AdminPage';
 import { SettingsPage } from '../../pages/SettingsPage';
+import { RoutePlanningPage } from '../../pages/RoutePlanningPage';
+import { MyRoutesPage } from '../../pages/MyRoutesPage';
+import { TechTrackingPage } from '../../pages/TechTrackingPage';
 
 export function DashboardLayout() {
   const { role } = useAuth();
@@ -63,6 +66,9 @@ export function DashboardLayout() {
           <Route path="/reporting" element={role === 'tech' || role === 'admin' ? <TicketingPage /> : <Navigate to="/" replace />} />
           <Route path="/chat" element={<MessagesPage />} />
           <Route path="/admin" element={role === 'admin' ? <AdminPage /> : <Navigate to="/" replace />} />
+          <Route path="/route-planning" element={role === 'ops_manager' || role === 'admin' ? <RoutePlanningPage /> : <Navigate to="/" replace />} />
+          <Route path="/tech-tracking" element={role === 'ops_manager' || role === 'admin' ? <TechTrackingPage /> : <Navigate to="/" replace />} />
+          <Route path="/my-routes" element={role === 'road_tech' || role === 'admin' ? <MyRoutesPage /> : <Navigate to="/" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

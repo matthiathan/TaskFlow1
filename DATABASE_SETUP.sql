@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
   avatar_url TEXT,
-  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'tech', 'admin')),
+  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'tech', 'admin', 'ops_manager', 'road_tech')),
   api_key TEXT UNIQUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.tickets (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   title TEXT NOT NULL,
+  client_name TEXT,
   issue_description TEXT NOT NULL,
   priority TEXT NOT NULL,
   status TEXT DEFAULT 'awaiting_tech' CHECK (status IN ('awaiting_tech', 'diagnostic', 'repaired', 'closed')),
@@ -41,6 +42,8 @@ CREATE TABLE IF NOT EXISTS public.tickets (
   serial_number TEXT,
   occurrence_time TIMESTAMPTZ,
   machine_images TEXT[] DEFAULT '{}',
+  location_lat DOUBLE PRECISION,
+  location_lng DOUBLE PRECISION,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL
 );
 
@@ -232,3 +235,50 @@ ON CONFLICT (user_a, user_b) DO UPDATE SET
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+
+-- 10. FIELD OPERATIONS & SERVICE ROUTES
+CREATE TABLE IF NOT EXISTS public.field_routes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  road_tech_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  client_name TEXT NOT NULL,
+  client_location TEXT NOT NULL,
+  task_description TEXT NOT NULL,
+  scheduled_time TIMESTAMPTZ NOT NULL,
+  status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'late', 'arrived_on_time', 'arrived_late', 'no_arrival')),
+  check_in_time TIMESTAMPTZ,
+  check_in_lat DOUBLE PRECISION,
+  check_in_lng DOUBLE PRECISION
+);
+
+-- Realtime for live dispatch and tracking updates
+ALTER PUBLICATION supabase_realtime ADD TABLE public.field_routes;
+
+-- Enable RLS
+ALTER TABLE public.field_routes ENABLE ROW LEVEL SECURITY;
+
+-- Grants for field_routes
+GRANT ALL ON public.field_routes TO postgres, service_role;
+GRANT SELECT ON public.field_routes TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.field_routes TO authenticated;
+
+-- Policies for field_routes
+CREATE POLICY "Field routes visibility" ON public.field_routes 
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Ops and Admin can insert routes" ON public.field_routes 
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('ops_manager', 'admin'))
+  );
+
+CREATE POLICY "Allowed updates to field routes" ON public.field_routes 
+  FOR UPDATE USING (
+    auth.uid() = road_tech_id OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('ops_manager', 'admin'))
+  );
+
+CREATE POLICY "Ops and Admin can delete routes" ON public.field_routes 
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('ops_manager', 'admin'))
+  );
+

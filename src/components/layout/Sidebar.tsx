@@ -10,19 +10,25 @@ import {
   Moon,
   Sun,
   LayoutDashboard,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Navigation,
+  MapPin,
+  Users
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
  
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['user', 'tech', 'admin'] },
-  { icon: CheckSquare, label: 'Tasks', path: '/tasks', roles: ['user', 'tech', 'admin'] },
-  { icon: CalendarIcon, label: 'Calendar', path: '/calendar', roles: ['user', 'tech', 'admin'] },
-  { icon: ClipboardList, label: 'Service Tickets', path: '/reporting', roles: ['tech', 'admin'] },
-  { icon: MessageSquare, label: 'Communications', path: '/chat', roles: ['user', 'tech', 'admin'] },
-  { icon: Settings, label: 'Settings', path: '/settings', roles: ['user', 'tech', 'admin'] },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['user', 'tech', 'admin', 'road_tech'] },
+  { icon: CheckSquare, label: 'Tasks', path: '/tasks', roles: ['user', 'tech', 'admin', 'ops_manager', 'road_tech'] },
+  { icon: CalendarIcon, label: 'Calendar', path: '/calendar', roles: ['user', 'tech', 'admin', 'ops_manager', 'road_tech'] },
+  { icon: ClipboardList, label: 'Service Tickets', path: '/reporting', roles: ['tech', 'admin', 'road_tech'] },
+  { icon: Navigation, label: 'Route Planning', path: '/route-planning', roles: ['ops_manager'] },
+  { icon: Users, label: 'Tech Tracking', path: '/tech-tracking', roles: ['admin', 'ops_manager'] },
+  { icon: MapPin, label: 'My Routes', path: '/my-routes', roles: ['road_tech'] },
+  { icon: MessageSquare, label: 'Communications', path: '/chat', roles: ['user', 'tech', 'admin', 'road_tech'] },
+  { icon: Settings, label: 'Settings', path: '/settings', roles: ['user', 'tech', 'admin', 'ops_manager', 'road_tech'] },
   { icon: ShieldCheck, label: 'Admin Panel', path: '/admin', roles: ['admin'] },
 ];
 

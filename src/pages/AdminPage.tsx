@@ -52,15 +52,21 @@ export const AdminPage: React.FC = () => {
   const fetchProfiles = async () => {
     try {
       setLoading(true);
-      // We still fetch profiles from DB for immediate UI, 
-      // but we could also fetch Auth users if we need metadata parity
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProfiles(data || []);
+      const response = await fetch('/api/admin/users', {
+        headers: await getHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch auth users');
+      const { users } = await response.json();
+      const mappedProfiles = (users || []).map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        full_name: u.user_metadata?.full_name || u.email.split('@')[0],
+        avatar_url: u.user_metadata?.avatar_url || null,
+        role: u.user_metadata?.role || 'user',
+        created_at: u.created_at
+      })).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      setProfiles(mappedProfiles);
     } catch (err: any) {
       toast.error(`Admin Sync Failed: ${err.message}`);
     } finally {
@@ -224,7 +230,7 @@ export const AdminPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
-                        {(['user', 'tech', 'admin'] as Role[]).map((r) => (
+                        {(['user', 'tech', 'admin', 'ops_manager', 'road_tech'] as Role[]).map((r) => (
                           <button
                             key={r}
                             onClick={() => updateRole(profile.id, r)}
@@ -232,11 +238,11 @@ export const AdminPage: React.FC = () => {
                             className={cn(
                               "px-2 py-1 text-[8px] font-black uppercase rounded border transition-all",
                               profile.role === r 
-                                ? r === 'admin' ? "bg-red-500 text-white border-red-500" : "bg-brand-gold text-white border-brand-gold"
+                                ? r === 'admin' || r === 'ops_manager' ? "bg-red-500 text-white border-red-500" : "bg-brand-gold text-white border-brand-gold"
                                 : "text-text-secondary border-brand-border hover:border-brand-gold hover:text-brand-gold"
                             )}
                           >
-                            {r}
+                            {r.replace('_', ' ')}
                           </button>
                         ))}
                       </div>
@@ -325,6 +331,8 @@ export const AdminPage: React.FC = () => {
                 >
                   <option value="user">USER - Standard</option>
                   <option value="tech">TECH - Field Access</option>
+                  <option value="ops_manager">OPS MANAGER - Fleet Route Planner</option>
+                  <option value="road_tech">ROAD TECH - Field Driver Itinerary</option>
                   <option value="admin">ADMIN - Global Override</option>
                 </select>
               </div>

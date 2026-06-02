@@ -11,7 +11,7 @@ export const useTickets = () => {
     try {
       const { data, error } = await supabase
         .from('tickets')
-        .select('*')
+        .select('*, profiles(full_name)')
         .is('deleted_at', null) // This line is mandatory to hide soft-deleted tickets
         .order('created_at', { ascending: false });
 
@@ -66,6 +66,8 @@ export const useTickets = () => {
     serial_number?: string;
     occurrence_time?: string;
     machine_images?: string[];
+    location_lat?: number | null;
+    location_lng?: number | null;
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -82,6 +84,8 @@ export const useTickets = () => {
           serial_number: ticket.serial_number || null,
           occurrence_time: ticket.occurrence_time || null,
           machine_images: ticket.machine_images || [],
+          location_lat: ticket.location_lat || null,
+          location_lng: ticket.location_lng || null,
           user_id: user.id
         }])
         .select()

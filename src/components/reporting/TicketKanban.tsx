@@ -3,9 +3,21 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { motion, AnimatePresence } from 'motion/react';
 import { Ticket, TicketStatus } from '../../types/database';
 import { cn } from '../../lib/utils';
-import { GripVertical, Hash, Camera, QrCode, Clock, X } from 'lucide-react';
-
+import { GripVertical, Hash, Camera, QrCode, Clock, X, MapPin } from 'lucide-react';
+import { useTickets } from '../../hooks/useTickets';
 import { toast } from 'sonner';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon in react-leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface TicketKanbanProps {
   tickets: Ticket[];
@@ -110,14 +122,48 @@ const TicketCard: React.FC<{
               </div>
             )}
 
+            {/* Location Map if exists */}
+            {ticket.location_lat != null && ticket.location_lng != null && (
+              <div className="relative w-full overflow-hidden rounded-lg border border-brand-border bg-bg-elevated mt-2">
+                <div className="h-32 w-full z-0 relative">
+                  <MapContainer
+                    center={[ticket.location_lat, ticket.location_lng]}
+                    zoom={15}
+                    scrollWheelZoom={false}
+                    dragging={false}
+                    touchZoom={false}
+                    zoomControl={false}
+                    doubleClickZoom={false}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker position={[ticket.location_lat, ticket.location_lng]} />
+                  </MapContainer>
+                </div>
+                <div className="absolute top-2 left-2 p-1 bg-black/50 backdrop-blur-sm rounded-lg border border-white/10 flex items-center gap-1 z-10 pointer-events-none">
+                   <MapPin className="w-3 h-3 text-brand-gold" />
+                   <span className="text-[10px] text-white font-medium">Origin</span>
+                </div>
+              </div>
+            )}
+
             {/* Core Info */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <h4 className="text-xs font-bold text-text-primary leading-tight">
                 {ticket.title}
               </h4>
               <p className="text-xs text-text-secondary line-clamp-3 leading-relaxed">
                 {ticket.issue_description}
               </p>
+              {ticket.profiles?.full_name && (
+                <div className="text-[10px] text-text-secondary flex items-center gap-1 pt-0.5">
+                  <span className="font-semibold text-brand-gold text-[9px] uppercase tracking-wider">Reported by:</span>
+                  <span className="font-medium text-text-primary">{ticket.profiles.full_name}</span>
+                </div>
+              )}
             </div>
 
             {/* Footer: QR and Metadata */}

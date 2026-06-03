@@ -11,12 +11,15 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { LoginPage } from './pages/LoginPage';
 import { useAuth } from './contexts/AuthContext';
 import { useFleetTelemetry } from './hooks/useFleetTelemetry';
+import { usePushNotifications } from './hooks/usePushNotifications';
 
 function AppContent() {
   const { user, loading } = useAuth();
 
   // Mount the live fleet tracking telemetry engine globally
   useFleetTelemetry();
+  // Initialize push notification system
+  usePushNotifications();
 
   if (loading) {
     return (

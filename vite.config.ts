@@ -43,7 +43,8 @@ export default defineConfig(({mode}) => {
           ]
         },
         workbox: {
-          globIgnores: ['**/OneSignalSDKWorker.js']
+          globIgnores: ['**/OneSignalSDKWorker.js'],
+          importScripts: ['/OneSignalSDKWorker.js']
         }
       })
     ],

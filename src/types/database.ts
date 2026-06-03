@@ -105,4 +105,12 @@ export interface TelemetryLog {
   profile?: Profile | null;
 }
 
+export interface ErpPermission {
+  id: string;
+  user_id: string;
+  table_name: string;
+  can_read: boolean;
+  can_write: boolean;
+}
+
 

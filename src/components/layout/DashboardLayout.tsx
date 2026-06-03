@@ -6,6 +6,13 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { CommandPalette } from '../CommandPalette';
 
+import { ErpAccessManager } from '../erp/ErpAccessManager';
+import { ErpExplorer } from '../erp/ErpExplorer';
+import { ErpDataImporter } from '../erp/ErpDataImporter';
+import { ErpDashboard } from '../erp/ErpDashboard';
+import { ErpTablePage } from '../../pages/ErpTablePage';
+import { ContractsPage } from '../../pages/ContractsPage';
+
 import { TasksPage } from '../../pages/TasksPage';
 import { MessagesPage } from '../../pages/MessagesPage';
 import { TicketingPage } from '../../pages/TicketingPage';
@@ -72,6 +79,12 @@ export function DashboardLayout() {
           <Route path="/tech-tracking" element={role === 'ops_manager' || role === 'admin' ? <TechTrackingPage /> : <Navigate to="/" replace />} />
           <Route path="/driver-analytics" element={role === 'ops_manager' || role === 'admin' ? <DriverAnalyticsPage /> : <Navigate to="/" replace />} />
           <Route path="/my-routes" element={role === 'road_tech' || role === 'admin' ? <MyRoutesPage /> : <Navigate to="/" replace />} />
+          <Route path="/erp-access-manager" element={role === 'admin' ? <ErpAccessManager /> : <Navigate to="/" replace />} />
+          <Route path="/erp-explorer" element={role === 'admin' || true ? <ErpExplorer /> : <Navigate to="/" replace />} />
+          <Route path="/erp-importer" element={role === 'admin' ? <ErpDataImporter /> : <Navigate to="/" replace />} />
+          <Route path="/erp" element={role === 'admin' ? <ErpDashboard /> : <Navigate to="/" replace />} />
+          <Route path="/erp/contracts" element={<ContractsPage />} />
+          <Route path="/erp/table/:tableName" element={<ErpTablePage />} />
           <Route path="/analytics" element={role === 'admin' || role === 'exec' ? <ExecutiveDashboard /> : <Navigate to="/" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

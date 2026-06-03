@@ -277,8 +277,74 @@ CREATE POLICY "Allowed updates to field routes" ON public.field_routes
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('ops_manager', 'admin'))
   );
 
-CREATE POLICY "Ops and Admin can delete routes" ON public.field_routes 
-  FOR DELETE USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('ops_manager', 'admin'))
   );
+
+-- 11. TELEMETRY ENGINE & ROUTE RECONSTRUCTION
+
+-- Telemetry Alerts Table
+CREATE TABLE IF NOT EXISTS public.telemetry_alerts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  driver_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  speed_kmh DOUBLE PRECISION NOT NULL,
+  recorded_at TIMESTAMPTZ NOT NULL,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION
+);
+
+-- Trigger Function for Speeding Violations
+CREATE OR REPLACE FUNCTION public.check_telemetry_speed()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.speed_kmh > 125 THEN
+    INSERT INTO public.telemetry_alerts (driver_id, speed_kmh, recorded_at, latitude, longitude)
+    VALUES (NEW.driver_id, NEW.speed_kmh, NEW.recorded_at, NEW.latitude, NEW.longitude);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger
+CREATE TRIGGER on_telemetry_insert
+  AFTER INSERT ON public.driver_telemetry
+  FOR EACH ROW EXECUTE PROCEDURE public.check_telemetry_speed();
+
+-- Route Reconstruction View with Gap Handling
+-- Note: Requires PostGIS extension enabled in Supabase
+CREATE OR REPLACE VIEW public.v_driver_routes AS
+WITH time_diffs AS (
+  SELECT 
+    driver_id,
+    latitude,
+    longitude,
+    recorded_at,
+    LAG(recorded_at) OVER (PARTITION BY driver_id ORDER BY recorded_at) as prev_recorded_at
+  FROM public.driver_telemetry
+),
+segments AS (
+  SELECT 
+    driver_id,
+    latitude,
+    longitude,
+    recorded_at,
+    CASE 
+      WHEN prev_recorded_at IS NULL THEN 1
+      WHEN EXTRACT(EPOCH FROM (recorded_at - prev_recorded_at)) > 180 THEN 1 
+      ELSE 0 
+    END as gap_marker
+  FROM time_diffs
+),
+segment_ids AS (
+  SELECT 
+    *,
+    SUM(gap_marker) OVER (PARTITION BY driver_id ORDER BY recorded_at) as segment_id
+  FROM segments
+)
+SELECT 
+  driver_id,
+  segment_id,
+  ST_MakeLine(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) ORDER BY recorded_at) as route_line
+FROM segment_ids
+GROUP BY driver_id, segment_id;
+
 

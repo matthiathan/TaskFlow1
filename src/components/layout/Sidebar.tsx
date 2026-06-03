@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   CheckSquare, 
@@ -15,12 +15,20 @@ import {
   MapPin,
   Users,
   BarChart3,
-  Activity
+  Activity,
+  Database,
+  Lock,
+  Upload,
+  Package,
+  FileText,
+  FileCheck,
+  QrCode,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
 import { InstallAppBanner } from './InstallAppBanner';
+import { supabase } from '../../lib/supabase';
   
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['user', 'tech', 'admin', 'road_tech', 'exec'] },
@@ -39,7 +47,30 @@ const navItems = [
 
 export const Sidebar: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { theme, toggleTheme } = useTheme();
-  const { profile, role, logout } = useAuth(); 
+  const { profile, role, logout } = useAuth();
+  const [canReadAnyTable, setCanReadAnyTable] = useState(false);
+
+  useEffect(() => {
+    async function checkErpAccess() {
+      if (!profile?.id) return;
+      if (role === 'admin') {
+        setCanReadAnyTable(true);
+        return;
+      }
+      
+      const { data } = await supabase
+        .from('erp_table_permissions')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('can_read', true);
+        
+      if (data && data.length > 0) {
+        setCanReadAnyTable(true);
+      }
+    }
+    
+    checkErpAccess();
+  }, [profile?.id, role]);
 
   const allowedItems = navItems.filter(item => item.roles.includes(role || 'user'));
 
@@ -82,7 +113,86 @@ export const Sidebar: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
             </NavLink>
           ))}
         </nav>
-        <div className="px-2">
+
+        {/* ERP System Section */}
+        {(role === 'admin' || canReadAnyTable) && (
+          <div className="mt-6">
+            <h3 className="px-4 text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">ERP System</h3>
+            <div className="space-y-1">
+              {role === 'admin' && (
+                <>
+                <NavLink
+                  to="/erp-access-manager"
+                  onClick={onClose}
+                  className={({ isActive }) => cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group',
+                    isActive 
+                      ? 'bg-brand-gold text-white shadow-md shadow-brand-gold/10' 
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-base border border-transparent hover:border-brand-border'
+                  )}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Lock className={cn('w-4 h-4', isActive ? 'text-white' : 'text-text-secondary group-hover:text-brand-gold flex-shrink-0')} />
+                      <span className="truncate">Access Manager</span>
+                    </>
+                  )}
+                </NavLink>
+                <NavLink
+                  to="/erp-importer"
+                  onClick={onClose}
+                  className={({ isActive }) => cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group',
+                    isActive 
+                      ? 'bg-brand-gold text-white shadow-md shadow-brand-gold/10' 
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-base border border-transparent hover:border-brand-border'
+                  )}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Upload className={cn('w-4 h-4', isActive ? 'text-white' : 'text-text-secondary group-hover:text-brand-gold flex-shrink-0')} />
+                      <span className="truncate">Data Importer</span>
+                    </>
+                  )}
+                </NavLink>
+                </>
+              )}
+              {canReadAnyTable && (
+                <>
+                {[
+                  { label: 'Dashboard', path: '/erp', icon: LayoutDashboard },
+                  { label: 'Assets', path: '/erp/table/erp_assets', icon: Package },
+                  { label: 'Contracts', path: '/erp/contracts', icon: FileText },
+                  { label: 'Service Logs', path: '/erp/table/erp_service_logs', icon: FileCheck },
+                  { label: 'QR Mapping', path: '/erp/table/erp_qr_mapping', icon: QrCode },
+                ].map(link => (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      onClick={onClose}
+                      className={({ isActive }) => cn(
+                        'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group',
+                        isActive 
+                          ? 'bg-brand-gold text-white shadow-md shadow-brand-gold/10' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-bg-base border border-transparent hover:border-brand-border'
+                      )}
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <link.icon className={cn('w-4 h-4', isActive ? 'text-white' : 'text-text-secondary group-hover:text-brand-gold flex-shrink-0')} />
+                          <span className="truncate">{link.label}</span>
+                        </>
+                      )}
+                    </NavLink>
+                ))}
+
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="px-2 mt-4">
           <InstallAppBanner />
         </div>
       </div>

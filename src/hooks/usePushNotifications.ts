@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const usePushNotifications = () => {
   const { user } = useAuth();
+  const [isPermissionGranted, setIsPermissionGranted] = useState(true); // Assume granted until proven otherwise to avoid flickering, or use a loading state
 
   useEffect(() => {
     // Initialize OneSignal
@@ -10,6 +11,18 @@ export const usePushNotifications = () => {
     window.OneSignalDeferred.push((OneSignal: any) => {
       OneSignal.init({
         appId: import.meta.env.VITE_ONESIGNAL_APP_ID,
+      });
+
+      // Check permission state
+      const checkPermission = () => {
+        const permission = OneSignal.Notifications.permission;
+        setIsPermissionGranted(permission);
+      };
+      checkPermission();
+
+      // Listener for changes
+      OneSignal.Notifications.addEventListener('permissionChange', (permission: boolean) => {
+        setIsPermissionGranted(permission);
       });
     });
   }, []);
@@ -33,5 +46,5 @@ export const usePushNotifications = () => {
     });
   };
 
-  return { requestPermission };
+  return { requestPermission, isPermissionGranted };
 };

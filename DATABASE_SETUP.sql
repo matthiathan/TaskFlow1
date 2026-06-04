@@ -345,6 +345,43 @@ SELECT
   segment_id,
   ST_MakeLine(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) ORDER BY recorded_at) as route_line
 FROM segment_ids
-GROUP BY driver_id, segment_id;
+-- 12. PUSH NOTIFICATION ENGINE (OneSignal)
+
+CREATE OR REPLACE FUNCTION public.notify_user_via_onesignal()
+RETURNS TRIGGER AS $$
+DECLARE
+  notification_payload JSONB;
+BEGIN
+  -- We assume NEW.user_id is the recipient. 
+  -- Ensure you have set ONESIGNAL_REST_API_KEY in Supabase Vault/Secrets.
+  notification_payload := jsonb_build_object(
+    'app_id', 'YOUR_ONESIGNAL_APP_ID',
+    'include_aliases', jsonb_build_object('external_id', jsonb_build_array(NEW.user_id::text)),
+    'contents', jsonb_build_object('en', 'New record assigned: ' || COALESCE(NEW.title, 'System Update')),
+    'headings', jsonb_build_object('en', 'Dallmayr FSM Alert')
+  );
+
+  PERFORM net.http_post(
+    url := 'https://onesignal.com/api/v1/notifications',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Basic ' || current_setting('app.settings.onesignal_rest_api_key')
+    ),
+    body := notification_payload
+  );
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for tasks
+CREATE TRIGGER on_task_created
+  AFTER INSERT ON public.tasks
+  FOR EACH ROW EXECUTE PROCEDURE public.notify_user_via_onesignal();
+
+-- Trigger for tickets
+CREATE TRIGGER on_ticket_created
+  AFTER INSERT ON public.tickets
+  FOR EACH ROW EXECUTE PROCEDURE public.notify_user_via_onesignal();
 
 

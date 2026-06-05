@@ -334,7 +334,7 @@ export const TicketingPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6 lg:px-8 print:p-0">
+    <div className="w-full print:p-0">
       
       {/* Header & Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 print:hidden">

@@ -51,7 +51,7 @@ export const DashboardPage: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="w-full">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-text-primary">Dallmayr Dashboard</h1>
         <p className="text-text-secondary text-sm mt-1">Real-time task performance analytics and field ticketing summaries.</p>

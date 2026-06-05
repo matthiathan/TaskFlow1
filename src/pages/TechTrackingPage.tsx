@@ -432,7 +432,7 @@ export const TechTrackingPage: React.FC = () => {
   };
 
   return (
-    <div id="tech-tracking-page" className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
+    <div id="tech-tracking-page" className="w-full space-y-8">
       {/* Page Header */}
       <div className="border-b border-brand-border pb-6">
         <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-gold flex items-center gap-1.5 matches-glow">

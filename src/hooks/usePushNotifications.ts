@@ -1,43 +1,47 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const usePushNotifications = () => {
   const { user } = useAuth();
-  const [isPermissionGranted, setIsPermissionGranted] = useState(true); // Assume granted until proven otherwise to avoid flickering, or use a loading state
+  const [isPermissionGranted, setIsPermissionGranted] = useState(false);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
-    // Initialize OneSignal
+    if (isInitialized.current) return;
+    isInitialized.current = true;
+
     window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push((OneSignal: any) => {
-      OneSignal.init({
-        appId: import.meta.env.VITE_ONESIGNAL_APP_ID,
-      });
+    window.OneSignalDeferred.push(async (OneSignal: any) => {
+      try {
+        await OneSignal.init({
+          appId: import.meta.env.VITE_ONESIGNAL_APP_ID,
+          // Only allow the SDK to run if the URL matches your environment
+          allowLocalhostAsSecureOrigin: true 
+        });
 
-      // Check permission state
-      const checkPermission = () => {
-        const permission = OneSignal.Notifications.permission;
+        const permission = await OneSignal.Notifications.hasPermission();
         setIsPermissionGranted(permission);
-      };
-      checkPermission();
 
-      // Listener for changes
-      OneSignal.Notifications.addEventListener('permissionChange', (permission: boolean) => {
-        setIsPermissionGranted(permission);
-      });
+        OneSignal.Notifications.addEventListener('permissionChange', (permission: boolean) => {
+          setIsPermissionGranted(permission);
+        });
+      } catch (error) {
+        console.error("OneSignal initialization failed:", error);
+      }
     });
   }, []);
 
-  // Sync user with OneSignal
+  // Sync user separately after initialization
   useEffect(() => {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push((OneSignal: any) => {
+    window.OneSignalDeferred.push(async (OneSignal: any) => {
       if (user?.id) {
-        OneSignal.login(user.id);
+        await OneSignal.login(user.id);
         if (user.role) {
-          OneSignal.User.addTag('role', user.role);
+          await OneSignal.User.addTag('role', user.role);
         }
       } else {
-        OneSignal.logout();
+        await OneSignal.logout();
       }
     });
   }, [user]);

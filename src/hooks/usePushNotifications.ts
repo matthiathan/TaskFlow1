@@ -1,7 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-
-export const usePushNotifications = () => {
+import { useEffect, useState, useRef } from 'react';import { useAuth } from '../contexts/AuthContext';export const usePushNotifications = () => {
   const { user } = useAuth();
   const [isPermissionGranted, setIsPermissionGranted] = useState(false);
   const isInitialized = useRef(false);

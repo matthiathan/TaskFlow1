@@ -33,6 +33,9 @@ export const usePushNotifications = () => {
     window.OneSignalDeferred.push((OneSignal: any) => {
       if (user?.id) {
         OneSignal.login(user.id);
+        if (user.role) {
+          OneSignal.User.addTag('role', user.role);
+        }
       } else {
         OneSignal.logout();
       }

@@ -55,6 +55,7 @@ export function getTaskProgress(subtasks: Subtask[]): { total: number; completed
   return { total: subtasks.length, completed, percentage };
 }
 
+
 export function scanMentions(content: string): string[] {
   const mentions: string[] = [];
   const regex = /@([a-zA-Z0-9_.]+)/g;
@@ -64,4 +65,19 @@ export function scanMentions(content: string): string[] {
   }
   return mentions;
 }
+
+import { supabase } from './supabase';
+
+export const handleScan = async (assetQr: string, actorId: string) => {
+  const { data, error } = await supabase.rpc('process_machine_scan', {
+    p_asset_qr: assetQr,
+    p_scan_actor_id: actorId,
+  });
+
+  if (error) {
+    console.error('Scan error:', error);
+    throw error;
+  }
+  return data;
+};
 

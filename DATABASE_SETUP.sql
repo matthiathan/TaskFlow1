@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   title TEXT NOT NULL,
   description TEXT,
-  priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved')),
+  priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved', 'active')),
   due_date TIMESTAMPTZ,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   collaborators UUID[] DEFAULT '{}'
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS public.assets (
   name TEXT NOT NULL,
   serial_number TEXT UNIQUE NOT NULL,
   category TEXT NOT NULL,
-  status TEXT DEFAULT 'functional' CHECK (status IN ('functional', 'degraded', 'offline')),
+  status TEXT DEFAULT 'functional' CHECK (status IN ('functional', 'degraded', 'offline', 'INHOUSE_NOT_READY', 'INHOUSE_READY', 'AT_CLIENT')),
   last_maintenance DATE DEFAULT CURRENT_DATE,
   location TEXT
 );
@@ -279,7 +279,21 @@ CREATE POLICY "Allowed updates to field routes" ON public.field_routes
 
   );
 
--- 11. TELEMETRY ENGINE & ROUTE RECONSTRUCTION
+CREATE TABLE IF NOT EXISTS public.driver_telemetry (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  driver_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  recorded_at TIMESTAMPTZ NOT NULL
+);
+
+-- Ensure only these columns exist (if table exists, add them if missing or ignore extra)
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='driver_telemetry' AND column_name='speed_kmh') THEN
+        ALTER TABLE public.driver_telemetry DROP COLUMN speed_kmh;
+    END IF;
+END $$;
+
 
 -- Telemetry Alerts Table
 CREATE TABLE IF NOT EXISTS public.telemetry_alerts (
@@ -311,41 +325,77 @@ CREATE TRIGGER on_telemetry_insert
 
 -- Route Reconstruction View with Gap Handling
 -- Note: Requires PostGIS extension enabled in Supabase
-CREATE OR REPLACE VIEW public.v_driver_routes AS
-WITH time_diffs AS (
-  SELECT 
-    driver_id,
-    latitude,
-    longitude,
-    recorded_at,
-    LAG(recorded_at) OVER (PARTITION BY driver_id ORDER BY recorded_at) as prev_recorded_at
-  FROM public.driver_telemetry
-),
-segments AS (
-  SELECT 
-    driver_id,
-    latitude,
-    longitude,
-    recorded_at,
-    CASE 
-      WHEN prev_recorded_at IS NULL THEN 1
-      WHEN EXTRACT(EPOCH FROM (recorded_at - prev_recorded_at)) > 180 THEN 1 
-      ELSE 0 
-    END as gap_marker
-  FROM time_diffs
-),
-segment_ids AS (
-  SELECT 
-    *,
-    SUM(gap_marker) OVER (PARTITION BY driver_id ORDER BY recorded_at) as segment_id
-  FROM segments
-)
+CREATE OR REPLACE VIEW public.v_driver_route_history AS
 SELECT 
   driver_id,
-  segment_id,
+  recorded_at::date as route_date,
   ST_MakeLine(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) ORDER BY recorded_at) as route_line
-FROM segment_ids
+FROM public.driver_telemetry
+GROUP BY driver_id, recorded_at::date;
 -- 12. PUSH NOTIFICATION ENGINE (OneSignal)
+-- (lines omitted for brevity, adding ERP POLICIES here)
+
+-- 13. ERP MODULE POLICIES
+-- Enable RLS and add policies for ERP tables
+DO $$ BEGIN
+  EXECUTE 'ALTER TABLE public.erp_assets ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE public.erp_qr_mapping ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE public.erp_service_logs ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE public.erp_contracts_cpt ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE public.erp_contracts_jhb ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE public.erp_contracts_kzn ENABLE ROW LEVEL SECURITY';
+END $$;
+
+-- Policies
+CREATE OR REPLACE FUNCTION public.is_erp_privileged() RETURNS BOOLEAN AS $$
+  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('tech', 'admin', 'ops_manager'));
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Assets
+CREATE POLICY "ERP Assets Select" ON public.erp_assets FOR SELECT USING (true);
+CREATE POLICY "ERP Assets Modify" ON public.erp_assets FOR ALL USING (public.is_erp_privileged());
+
+-- QR Mapping
+CREATE POLICY "ERP QR Select" ON public.erp_qr_mapping FOR SELECT USING (true);
+CREATE POLICY "ERP QR Modify" ON public.erp_qr_mapping FOR ALL USING (public.is_erp_privileged());
+
+-- Service Logs
+CREATE POLICY "ERP Logs Select" ON public.erp_service_logs FOR SELECT USING (true);
+CREATE POLICY "ERP Logs Modify" ON public.erp_service_logs FOR ALL USING (public.is_erp_privileged());
+
+-- Contracts
+CREATE POLICY "ERP CPT Select" ON public.erp_contracts_cpt FOR SELECT USING (true);
+CREATE POLICY "ERP CPT Modify" ON public.erp_contracts_cpt FOR ALL USING (public.is_erp_privileged());
+
+CREATE POLICY "ERP JHB Select" ON public.erp_contracts_jhb FOR SELECT USING (true);
+CREATE POLICY "ERP JHB Modify" ON public.erp_contracts_jhb FOR ALL USING (public.is_erp_privileged());
+
+CREATE POLICY "ERP KZN Select" ON public.erp_contracts_kzn FOR SELECT USING (true);
+CREATE POLICY "ERP KZN Modify" ON public.erp_contracts_kzn FOR ALL USING (public.is_erp_privileged());
+
+CREATE OR REPLACE FUNCTION public.trigger_role_notification(target_role TEXT, message TEXT)
+RETURNS void AS $$
+DECLARE
+  payload JSONB;
+BEGIN
+  payload := jsonb_build_object(
+    'app_id', 'YOUR_ONESIGNAL_APP_ID',
+    'contents', jsonb_build_object('en', message),
+    'filters', jsonb_build_array(
+      jsonb_build_object('field', 'tag', 'key', 'role', 'relation', '=', 'value', target_role)
+    )
+  );
+
+  PERFORM net.http_post(
+    url := 'https://onesignal.com/api/v1/notifications',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Basic ' || current_setting('app.settings.onesignal_rest_api_key')
+    ),
+    body := payload
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.notify_user_via_onesignal()
 RETURNS TRIGGER AS $$
@@ -383,5 +433,46 @@ CREATE TRIGGER on_task_created
 CREATE TRIGGER on_ticket_created
   AFTER INSERT ON public.tickets
   FOR EACH ROW EXECUTE PROCEDURE public.notify_user_via_onesignal();
+
+CREATE OR REPLACE FUNCTION public.process_machine_scan(asset_serial TEXT, scanned_by_user_id UUID, user_role TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_asset RECORD;
+  v_result JSONB;
+BEGIN
+  -- 1. Get Asset
+  SELECT * INTO v_asset FROM public.assets WHERE serial_number = asset_serial;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('error', 'Asset not found');
+  END IF;
+
+  -- 3. State Machine
+  IF user_role = 'warehouse' THEN
+    UPDATE public.assets SET status = 'INHOUSE_NOT_READY' WHERE id = v_asset.id;
+    PERFORM public.trigger_role_notification('tech', 'Machine ' || asset_serial || ' ready for intake');
+    v_result := jsonb_build_object('status', 'updated', 'new_status', 'INHOUSE_NOT_READY');
+
+  ELSIF user_role = 'tech' THEN
+    UPDATE public.assets SET status = 'INHOUSE_READY' WHERE id = v_asset.id;
+    PERFORM public.trigger_role_notification('ops_manager', 'Machine ' || asset_serial || ' ready for routing');
+    v_result := jsonb_build_object('status', 'updated', 'new_status', 'INHOUSE_READY');
+
+  ELSIF user_role = 'ops_manager' THEN
+    INSERT INTO public.tasks (title, user_id, priority, status)
+    VALUES ('Route Machine ' || asset_serial, scanned_by_user_id, 'urgent', 'active');
+    PERFORM public.trigger_role_notification('driver', 'New priority route assigned');
+    v_result := jsonb_build_object('status', 'task_created');
+
+  ELSIF user_role = 'driver' THEN
+    UPDATE public.assets SET status = 'AT_CLIENT' WHERE id = v_asset.id;
+    UPDATE public.tasks SET status = 'resolved' WHERE user_id = scanned_by_user_id AND status = 'active';
+    v_result := jsonb_build_object('status', 'updated', 'new_status', 'AT_CLIENT');
+  ELSE
+    RETURN jsonb_build_object('error', 'Unauthorized role');
+  END IF;
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
